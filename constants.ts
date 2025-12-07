@@ -26,5 +26,6 @@ export const createInitialPlayers = (): Player[] =>
     id: `player-${i}`,
     name: '',
     number: (i + 1).toString(),
-    stats: { ...INITIAL_STATS }
+    stats: { ...INITIAL_STATS },
+    cardStatus: 'none'
   }));

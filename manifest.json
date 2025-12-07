@@ -1,0 +1,15 @@
+{
+  "short_name": "LeagueLens",
+  "name": "LeagueLens",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#E02020",
+  "background_color": "#ffffff"
+}

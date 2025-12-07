@@ -49,6 +49,9 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     onConfirm(result);
   };
 
+  // Helper to get all IDs currently assigned to ANY jersey
+  const getAllSelectedIds = () => Object.values(selections).filter(Boolean);
+
   if (!isOpen) return null;
 
   return (
@@ -72,20 +75,31 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                const jersey = num.toString();
                const selectedId = selections[jersey] || '';
                
+               // Calculate which players are available for THIS dropdown
+               // A player is available if:
+               // 1. They are not selected anywhere else (not in allSelectedIds)
+               // 2. OR they are the one currently selected for THIS jersey (p.id === selectedId)
+               const allSelectedIds = getAllSelectedIds();
+               const availablePlayers = squad.filter(p => {
+                 const isTaken = allSelectedIds.includes(p.id);
+                 const isSelectedHere = p.id === selectedId;
+                 return !isTaken || isSelectedHere;
+               });
+
                return (
                  <div key={jersey} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex items-center space-x-3">
-                   <div className="w-10 h-10 bg-slate-900 text-white font-bold font-mono rounded flex items-center justify-center text-lg shadow">
+                   <div className="w-10 h-10 flex-shrink-0 bg-slate-900 text-white font-bold font-mono rounded flex items-center justify-center text-lg shadow">
                      {jersey}
                    </div>
                    <select
-                     className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full min-w-0"
                      value={selectedId}
                      onChange={(e) => handleSelect(jersey, e.target.value)}
                    >
                      <option value="">-- Select Player --</option>
-                     {squad.map(p => (
+                     {availablePlayers.map(p => (
                        <option key={p.id} value={p.id}>
-                         {p.name} {p.position ? `(${p.position})` : ''}
+                         {p.name}
                        </option>
                      ))}
                    </select>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 
@@ -5,17 +6,27 @@ interface NoteModalProps {
   isOpen: boolean;
   title: string;
   playerName: string;
-  onSubmit: (note: string) => void;
+  showLocation?: boolean;
+  onSubmit: (note: string, location?: string) => void;
   onClose: () => void;
 }
 
-export const NoteModal: React.FC<NoteModalProps> = ({ isOpen, title, playerName, onSubmit, onClose }) => {
+export const NoteModal: React.FC<NoteModalProps> = ({ 
+  isOpen, 
+  title, 
+  playerName, 
+  showLocation = false, 
+  onSubmit, 
+  onClose 
+}) => {
   const [note, setNote] = useState('');
+  const [location, setLocation] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setNote('');
+      setLocation('');
       // Focus input on open
       setTimeout(() => {
         inputRef.current?.focus();
@@ -27,7 +38,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({ isOpen, title, playerName,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(note);
+    onSubmit(note, location);
   };
 
   return (
@@ -47,6 +58,23 @@ export const NoteModal: React.FC<NoteModalProps> = ({ isOpen, title, playerName,
         <p className="text-sm text-gray-500 mb-4">Player: <span className="font-semibold text-gray-800">{playerName || 'Unknown'}</span></p>
         
         <form onSubmit={handleSubmit}>
+          {showLocation && (
+            <div className="mb-4">
+              <label htmlFor="location" className="block text-xs font-bold uppercase text-gray-500 mb-1">Field Position</label>
+              <select
+                id="location"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              >
+                <option value="">-- Select Location --</option>
+                <option value="Defensive 20">Defensive 20</option>
+                <option value="Mid-field">Mid-field</option>
+                <option value="Attacking 20">Attacking 20</option>
+              </select>
+            </div>
+          )}
+
           <div className="mb-4">
             <label htmlFor="reason" className="block text-xs font-bold uppercase text-gray-500 mb-1">Reason (Optional)</label>
             <input
@@ -54,7 +82,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({ isOpen, title, playerName,
               id="reason"
               type="text"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-              placeholder="e.g. High Tackle, Offside..."
+              placeholder="e.g. High Tackle, Knock on..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               autoComplete="off"
@@ -73,7 +101,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({ isOpen, title, playerName,
               type="submit"
               className="bg-red-600 hover:bg-red-700 text-white text-xs"
             >
-              Save Note
+              Save Details
             </Button>
           </div>
         </form>

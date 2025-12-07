@@ -28,6 +28,8 @@ export interface Player {
   stats: PlayerStats;
   isOnField?: boolean;
   squadId?: string; // Link to the squad roster
+  cardStatus?: 'none' | 'yellow' | 'red';
+  sinBinStartTime?: number; // Match time in seconds when yellow card was issued
 }
 
 export interface SquadPlayer {
@@ -44,8 +46,9 @@ export interface GameLogEntry {
   playerId: string;
   playerName: string;
   playerNumber: string;
-  type: 'penalty' | 'other';
+  type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error';
   reason?: string;
+  location?: string; // e.g. "Defensive 20"
   period: '1st' | '2nd';
 }
 

@@ -1,5 +1,5 @@
 {
-  "name": "Simple Player Stat Tracker",
+  "name": "LeagueLens",
   "description": "A clean and efficient React application to track rugby or league player statistics in real-time.",
   "requestFramePermissions": []
 }

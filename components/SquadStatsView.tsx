@@ -18,6 +18,13 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
   onRemovePlayer
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'stats'>('roster');
+  const [isSorted, setIsSorted] = useState(false);
+  
+  // Sort State for Stats Tab
+  const [statSort, setStatSort] = useState<{ key: string; direction: 'asc' | 'desc' }>({ 
+    key: 'games', 
+    direction: 'desc' 
+  });
   
   // Form State
   const [newName, setNewName] = useState('');
@@ -36,7 +43,25 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
     setNewPosition('');
   };
 
-  // Aggregated Stats Calculation
+  const handleStatSort = (key: string) => {
+    setStatSort(prev => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      // Default numbers to High-to-Low (desc), Text to A-Z (asc)
+      return { key, direction: key === 'name' ? 'asc' : 'desc' };
+    });
+  };
+
+  // Sort Logic for Roster
+  const displaySquad = useMemo(() => {
+    if (isSorted) {
+      return [...squad].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return squad;
+  }, [squad, isSorted]);
+
+  // Aggregated Stats Calculation with Sort
   const careerStats = useMemo(() => {
     const statsMap: Record<string, { 
       games: number, 
@@ -82,7 +107,6 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
           if (isWin) entry.wins += 1;
           
           // Sum stats (using full match stats if available, otherwise just current stats)
-          // The history item stores `fullMatchStats` usually in `data.fullMatchStats` or `data.players` has the final stats
           const finalStats = (match.data.fullMatchStats && match.data.fullMatchStats[mp.id]) || mp.stats;
 
           Object.keys(finalStats).forEach(k => {
@@ -95,10 +119,33 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
       });
     });
 
-    return Object.entries(statsMap)
-      .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.games - a.games); // Default sort by games played
-  }, [squad, history]);
+    // Convert map to array
+    const aggregated = Object.entries(statsMap).map(([id, data]) => ({ id, ...data }));
+
+    // Apply Sorting
+    return aggregated.sort((a, b) => {
+      const { key, direction } = statSort;
+      let valA: number | string = 0;
+      let valB: number | string = 0;
+
+      if (key === 'name') {
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+      } else if (key === 'games') {
+        valA = a.games;
+        valB = b.games;
+      } else {
+        // Stats key
+        valA = a.stats[key as keyof PlayerStats] || 0;
+        valB = b.stats[key as keyof PlayerStats] || 0;
+      }
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+  }, [squad, history, statSort]);
 
   return (
     <div className="space-y-6">
@@ -161,6 +208,24 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
 
           {/* Roster List */}
           <div className="lg:col-span-2">
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => setIsSorted(!isSorted)}
+                className="flex items-center text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-red-600 transition-colors bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm"
+              >
+                {isSorted ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Reset Order
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" /></svg>
+                    Sort A-Z
+                  </>
+                )}
+              </button>
+            </div>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -171,14 +236,14 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {squad.length === 0 ? (
+                  {displaySquad.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-6 py-12 text-center text-gray-400">
                         No players in squad. Add one to get started.
                       </td>
                     </tr>
                   ) : (
-                    squad.map(player => (
+                    displaySquad.map(player => (
                       <tr key={player.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{player.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{player.position || '-'}</td>
@@ -207,11 +272,40 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">Player</th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Matches</th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors z-10"
+                  onClick={() => handleStatSort('name')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Player</span>
+                    {statSort.key === 'name' && (
+                       <span className="text-red-500">{statSort.direction === 'desc' ? '↓' : '↑'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleStatSort('games')}
+                >
+                   <div className="flex items-center justify-center space-x-1">
+                    <span>Matches</span>
+                    {statSort.key === 'games' && (
+                       <span className="text-red-500">{statSort.direction === 'desc' ? '↓' : '↑'}</span>
+                    )}
+                  </div>
+                </th>
                 {STAT_CONFIGS.map(sc => (
-                  <th key={sc.key} className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    {sc.label}
+                  <th 
+                    key={sc.key} 
+                    onClick={() => handleStatSort(sc.key)}
+                    className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-center space-x-1">
+                      <span>{sc.label}</span>
+                      {statSort.key === sc.key && (
+                        <span className="text-red-500">{statSort.direction === 'desc' ? '↓' : '↑'}</span>
+                      )}
+                    </div>
                   </th>
                 ))}
               </tr>
