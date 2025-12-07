@@ -12,6 +12,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [customLogo, setCustomLogo] = useState<string | null>(null);
+  const [defaultLogoFailed, setDefaultLogoFailed] = useState(false);
 
   useEffect(() => {
     const savedLogo = localStorage.getItem('RUGBY_TRACKER_LOGO');
@@ -28,6 +29,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         const result = reader.result as string;
         setCustomLogo(result);
         localStorage.setItem('RUGBY_TRACKER_LOGO', result);
+        setDefaultLogoFailed(false); // Reset error state as we have a valid custom logo
       };
       reader.readAsDataURL(file);
     }
@@ -69,6 +71,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     setPassword('');
   };
 
+  // Logic: Use custom uploaded logo OR fallback to 'logo.png' in the project root
+  // If 'logo.png' fails to load (onError), we switch to the placeholder UI.
+  const activeLogoSrc = customLogo || 'logo.png';
+  const showImage = !!customLogo || !defaultLogoFailed;
+
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans selection:bg-red-500/30">
       {/* Left Panel: Branding (Apple-inspired Dark Mode) */}
@@ -90,15 +97,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                   accept="image/*" 
                   onChange={handleLogoUpload} 
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                  title="Click to upload your team logo"
+                  title="Click to upload a custom logo (overrides default)"
                />
                
-               {customLogo ? (
+               {showImage ? (
                  <div className="relative">
                     <img 
-                      src={customLogo} 
+                      src={activeLogoSrc} 
                       alt="Club Logo" 
                       className="w-20 h-20 object-contain drop-shadow-2xl transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        // If we are relying on the default 'logo.png' and it fails, show placeholder
+                        if (!customLogo) {
+                          setDefaultLogoFailed(true);
+                          e.currentTarget.style.display = 'none';
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,7 +125,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                     <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-[9px] uppercase font-bold tracking-wider">Logo</span>
+                    <span className="text-[9px] uppercase font-bold tracking-wider">Upload</span>
                  </div>
                )}
              </div>

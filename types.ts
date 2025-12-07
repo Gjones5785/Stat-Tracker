@@ -26,4 +26,35 @@ export interface Player {
   name: string;
   number: string;
   stats: PlayerStats;
+  isOnField?: boolean;
+  squadId?: string; // Link to the squad roster
+}
+
+export interface SquadPlayer {
+  id: string;
+  name: string;
+  position?: string;
+  createdAt: number;
+}
+
+export interface GameLogEntry {
+  id: string;
+  timestamp: number; // raw seconds
+  formattedTime: string; // MM:SS
+  playerId: string;
+  playerName: string;
+  playerNumber: string;
+  type: 'penalty' | 'other';
+  reason?: string;
+  period: '1st' | '2nd';
+}
+
+export interface MatchHistoryItem {
+  id: string;
+  date: string;
+  teamName: string;
+  opponentName: string;
+  finalScore: string; // "24 - 10"
+  result: 'win' | 'loss' | 'draw' | 'unknown';
+  data: any; // Full state dump
 }
