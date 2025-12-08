@@ -57,14 +57,14 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Possession Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-apple border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 z-10">Possession</h3>
+        <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center relative overflow-hidden transition-colors">
+          <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6 z-10">Possession</h3>
           
           <div className="relative w-48 h-48 flex items-center justify-center z-10">
             {/* SVG Pie Chart */}
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
               {/* Background Circle (Defense/Opponent) */}
-              <circle cx="18" cy="18" r="16" fill="none" className="stroke-red-100" strokeWidth="3.5" />
+              <circle cx="18" cy="18" r="16" fill="none" className="stroke-red-100 dark:stroke-red-900/30" strokeWidth="3.5" />
               {/* Foreground Circle (Attack/Team) */}
               <circle 
                 cx="18" 
@@ -80,7 +80,7 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
             
             {/* Center Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-heading font-bold text-slate-900">{attackPct.toFixed(0)}%</span>
+              <span className="text-3xl font-heading font-bold text-slate-900 dark:text-white">{attackPct.toFixed(0)}%</span>
               <span className="text-[10px] font-bold text-blue-500 uppercase mt-1">Attack</span>
             </div>
           </div>
@@ -88,27 +88,27 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
           <div className="w-full flex justify-between mt-6 px-4 z-10">
              <div className="flex items-center">
                 <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-                <span className="text-xs font-bold text-slate-700">{teamName}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-gray-300">{teamName}</span>
              </div>
              <div className="flex items-center">
-                <span className="text-xs font-bold text-slate-700">{opponentName}</span>
-                <span className="w-3 h-3 rounded-full bg-red-100 mr-2 ml-2"></span>
+                <span className="text-xs font-bold text-slate-700 dark:text-gray-300">{opponentName}</span>
+                <span className="w-3 h-3 rounded-full bg-red-100 dark:bg-red-900/40 mr-2 ml-2"></span>
              </div>
           </div>
         </div>
 
         {/* Score Breakdown Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-apple border border-gray-100 flex flex-col relative overflow-hidden">
-           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 z-10">Score Breakdown</h3>
+        <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col relative overflow-hidden transition-colors">
+           <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6 z-10">Score Breakdown</h3>
            
            <div className="flex-1 flex flex-col justify-center space-y-8 z-10">
              {/* Team Score */}
              <div>
                 <div className="flex justify-between items-end mb-2">
-                   <span className="text-xl font-heading font-bold text-slate-900">{teamName}</span>
-                   <span className="text-3xl font-heading font-black text-blue-600">{leftScore}</span>
+                   <span className="text-xl font-heading font-bold text-slate-900 dark:text-white">{teamName}</span>
+                   <span className="text-3xl font-heading font-black text-blue-600 dark:text-blue-400">{leftScore}</span>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                    <div 
                      className="h-full bg-blue-500" 
                      style={{ width: `${(leftScore / (leftScore + rightScore || 1)) * 100}%` }} 
@@ -119,10 +119,10 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
              {/* Opponent Score */}
              <div>
                 <div className="flex justify-between items-end mb-2">
-                   <span className="text-xl font-heading font-bold text-slate-900">{opponentName}</span>
-                   <span className="text-3xl font-heading font-black text-slate-400">{rightScore}</span>
+                   <span className="text-xl font-heading font-bold text-slate-900 dark:text-white">{opponentName}</span>
+                   <span className="text-3xl font-heading font-black text-slate-400 dark:text-gray-600">{rightScore}</span>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                    <div 
                      className="h-full bg-red-400" 
                      style={{ width: `${(rightScore / (leftScore + rightScore || 1)) * 100}%` }} 
@@ -137,22 +137,22 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Top Tacklers */}
-        <div className="bg-white rounded-3xl p-6 shadow-apple border border-gray-100">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Top Tacklers</h3>
+        <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 transition-colors">
+          <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6">Top Tacklers</h3>
           <div className="space-y-4">
             {topTacklers.length === 0 ? (
-               <p className="text-sm text-gray-400 italic">No tackle data yet.</p>
+               <p className="text-sm text-gray-400 dark:text-gray-600 italic">No tackle data yet.</p>
             ) : (
                topTacklers.map((p, i) => (
                  <div key={p.id} className="relative">
                    <div className="flex justify-between text-sm mb-1">
-                     <span className="font-bold text-slate-700 flex items-center">
-                       <span className="w-5 h-5 bg-gray-100 rounded text-[10px] flex items-center justify-center mr-2 text-gray-500">{i + 1}</span>
+                     <span className="font-bold text-slate-700 dark:text-gray-300 flex items-center">
+                       <span className="w-5 h-5 bg-gray-100 dark:bg-white/10 rounded text-[10px] flex items-center justify-center mr-2 text-gray-500 dark:text-gray-400">{i + 1}</span>
                        {p.name}
                      </span>
-                     <span className="font-mono font-bold text-slate-900">{p.stats.tackles}</span>
+                     <span className="font-mono font-bold text-slate-900 dark:text-white">{p.stats.tackles}</span>
                    </div>
-                   <div className="w-full h-2 bg-gray-50 rounded-full overflow-hidden">
+                   <div className="w-full h-2 bg-gray-50 dark:bg-white/5 rounded-full overflow-hidden">
                      <div 
                        className="h-full bg-emerald-400 rounded-full" 
                        style={{ width: `${getBarWidth(p.stats.tackles, topTacklers[0].stats.tackles)}%` }}
@@ -165,22 +165,22 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
         </div>
 
         {/* Top Hit-ups */}
-        <div className="bg-white rounded-3xl p-6 shadow-apple border border-gray-100">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Top Ball Carriers</h3>
+        <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 transition-colors">
+          <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6">Top Ball Carriers</h3>
           <div className="space-y-4">
             {topCarriers.length === 0 ? (
-               <p className="text-sm text-gray-400 italic">No hit-up data yet.</p>
+               <p className="text-sm text-gray-400 dark:text-gray-600 italic">No hit-up data yet.</p>
             ) : (
                topCarriers.map((p, i) => (
                  <div key={p.id} className="relative">
                    <div className="flex justify-between text-sm mb-1">
-                     <span className="font-bold text-slate-700 flex items-center">
-                       <span className="w-5 h-5 bg-gray-100 rounded text-[10px] flex items-center justify-center mr-2 text-gray-500">{i + 1}</span>
+                     <span className="font-bold text-slate-700 dark:text-gray-300 flex items-center">
+                       <span className="w-5 h-5 bg-gray-100 dark:bg-white/10 rounded text-[10px] flex items-center justify-center mr-2 text-gray-500 dark:text-gray-400">{i + 1}</span>
                        {p.name}
                      </span>
-                     <span className="font-mono font-bold text-slate-900">{p.stats.hitUps}</span>
+                     <span className="font-mono font-bold text-slate-900 dark:text-white">{p.stats.hitUps}</span>
                    </div>
-                   <div className="w-full h-2 bg-gray-50 rounded-full overflow-hidden">
+                   <div className="w-full h-2 bg-gray-50 dark:bg-white/5 rounded-full overflow-hidden">
                      <div 
                        className="h-full bg-amber-400 rounded-full" 
                        style={{ width: `${getBarWidth(p.stats.hitUps, topCarriers[0].stats.hitUps)}%` }}

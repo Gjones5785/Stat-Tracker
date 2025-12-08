@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { PlayerRow } from './components/PlayerRow';
 import { Button } from './components/Button';
@@ -16,6 +17,23 @@ import { MatchCharts } from './components/MatchCharts';
 const App: React.FC = () => {
   // --- AUTH STATE ---
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+
+  // --- THEME STATE ---
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('LEAGUELENS_THEME') === 'dark';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('LEAGUELENS_THEME', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('LEAGUELENS_THEME', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleTheme = () => setDarkMode(!darkMode);
 
   // --- NAVIGATION STATE ---
   const [currentScreen, setCurrentScreen] = useState<'dashboard' | 'tracker'>('dashboard');
@@ -850,9 +868,11 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           onAddSquadPlayer={handleAddSquadPlayer}
           onRemoveSquadPlayer={handleRemoveSquadPlayer}
+          darkMode={darkMode}
+          toggleTheme={toggleTheme}
         />
       ) : (
-        <div className="flex flex-col h-screen bg-[#F5F5F7] overflow-hidden font-sans">
+        <div className="flex flex-col h-screen bg-[#F5F5F7] dark:bg-[#0F0F10] overflow-hidden font-sans transition-colors duration-300">
           
           <ConfirmationModal 
             isOpen={isResetModalOpen}
@@ -894,63 +914,63 @@ const App: React.FC = () => {
           />
 
           {/* Header */}
-          <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200/50 flex-none z-50 relative supports-[backdrop-filter]:bg-white/60">
+          <header className="bg-white/80 dark:bg-[#1A1A1C]/80 backdrop-blur-md shadow-sm border-b border-gray-200/50 dark:border-white/5 flex-none z-50 relative supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#1A1A1C]/60 transition-colors">
             <div className="max-w-full mx-auto px-4 py-3 flex items-center justify-between">
               
               {/* Left: Sets */}
               <div className="flex-none w-auto sm:w-64 flex flex-col items-center justify-center sm:items-start">
-                 <div className="flex flex-col items-center justify-center bg-white/50 rounded-xl p-2 border border-gray-100 shadow-sm">
-                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Completed Sets</span>
+                 <div className="flex flex-col items-center justify-center bg-white/50 dark:bg-white/5 rounded-xl p-2 border border-gray-100 dark:border-white/5 shadow-sm">
+                   <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Completed Sets</span>
                    <div className="flex items-center justify-center space-x-2 mb-1">
                       <input
                          type="number"
                          value={completedSets}
                          onChange={(e) => setCompletedSets(Number(e.target.value))}
                          disabled={gameStatus === 'finished' || !isInitialized}
-                         className="w-10 text-center font-heading font-bold text-xl text-blue-600 bg-transparent outline-none p-0 disabled:text-gray-400"
+                         className="w-10 text-center font-heading font-bold text-xl text-blue-600 dark:text-blue-400 bg-transparent outline-none p-0 disabled:text-gray-400 dark:disabled:text-gray-600"
                       />
-                      <span className="text-gray-300 font-light text-xl">/</span>
+                      <span className="text-gray-300 dark:text-gray-600 font-light text-xl">/</span>
                       <input
                          type="number"
                          value={totalSets}
                          onChange={(e) => setTotalSets(Number(e.target.value))}
                          disabled={gameStatus === 'finished' || !isInitialized}
-                         className="w-10 text-center font-heading font-bold text-xl text-gray-600 bg-transparent outline-none p-0 disabled:text-gray-400"
+                         className="w-10 text-center font-heading font-bold text-xl text-gray-600 dark:text-gray-300 bg-transparent outline-none p-0 disabled:text-gray-400 dark:disabled:text-gray-600"
                       />
                    </div>
                    <div className="flex space-x-2">
-                       <button onClick={handleSetComplete} disabled={gameStatus === 'finished' || !isInitialized} className="bg-green-50 text-green-600 hover:bg-green-100 px-2 py-1 rounded text-[10px] font-bold uppercase disabled:opacity-50 transition-colors">+ Comp</button>
-                       <button onClick={handleSetFail} disabled={gameStatus === 'finished' || !isInitialized} className="bg-gray-100 text-gray-500 hover:bg-gray-200 px-2 py-1 rounded text-[10px] font-bold uppercase disabled:opacity-50 transition-colors">+ Miss</button>
+                       <button onClick={handleSetComplete} disabled={gameStatus === 'finished' || !isInitialized} className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 px-2 py-1 rounded text-[10px] font-bold uppercase disabled:opacity-50 transition-colors">+ Comp</button>
+                       <button onClick={handleSetFail} disabled={gameStatus === 'finished' || !isInitialized} className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded text-[10px] font-bold uppercase disabled:opacity-50 transition-colors">+ Miss</button>
                    </div>
                  </div>
               </div>
 
               {/* Center: Scores & Name */}
               <div className="flex-1 flex flex-col justify-center items-center px-2">
-                 <div className="flex justify-center items-center space-x-4 sm:space-x-8 bg-white/50 p-2 rounded-2xl border border-gray-100 shadow-sm">
+                 <div className="flex justify-center items-center space-x-4 sm:space-x-8 bg-white/50 dark:bg-white/5 p-2 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
                   {/* Left Score */}
-                  <input type="number" value={leftScore} onChange={(e) => setLeftScore(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} className="w-16 text-center text-4xl font-heading font-black text-slate-800 bg-transparent outline-none placeholder-gray-300 disabled:text-gray-400" placeholder="0" />
+                  <input type="number" value={leftScore} onChange={(e) => setLeftScore(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} className="w-16 text-center text-4xl font-heading font-black text-slate-800 dark:text-white bg-transparent outline-none placeholder-gray-300 dark:placeholder-gray-700 disabled:text-gray-400 dark:disabled:text-gray-600" placeholder="0" />
                   
                   <div className="flex flex-col items-center">
-                    <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} placeholder="TEAM NAME" className="w-full min-w-[120px] max-w-[240px] text-center text-xl sm:text-2xl font-heading font-bold text-slate-900 placeholder-gray-300 bg-transparent outline-none uppercase tracking-tight disabled:text-gray-500" />
+                    <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} placeholder="TEAM NAME" className="w-full min-w-[120px] max-w-[240px] text-center text-xl sm:text-2xl font-heading font-bold text-slate-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 bg-transparent outline-none uppercase tracking-tight disabled:text-gray-500 dark:disabled:text-gray-500" />
                     <input 
                       type="text" 
                       value={opponentName} 
                       onChange={(e) => setOpponentName(e.target.value)} 
                       disabled={gameStatus === 'finished' || !isInitialized} 
                       placeholder="VS OPPONENT" 
-                      className="mt-0.5 w-full max-w-[200px] text-center text-xs font-semibold text-gray-400 bg-transparent outline-none uppercase tracking-widest disabled:text-gray-300" 
+                      className="mt-0.5 w-full max-w-[200px] text-center text-xs font-semibold text-gray-400 dark:text-gray-500 bg-transparent outline-none uppercase tracking-widest disabled:text-gray-300 dark:disabled:text-gray-700" 
                     />
                   </div>
 
                   {/* Right Score with Buttons */}
                   <div className="flex items-center space-x-2">
-                    <input type="number" value={rightScore} onChange={(e) => setRightScore(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} className="w-16 text-center text-4xl font-heading font-black text-slate-800 bg-transparent outline-none placeholder-gray-300 disabled:text-gray-400" placeholder="0" />
+                    <input type="number" value={rightScore} onChange={(e) => setRightScore(e.target.value)} disabled={gameStatus === 'finished' || !isInitialized} className="w-16 text-center text-4xl font-heading font-black text-slate-800 dark:text-white bg-transparent outline-none placeholder-gray-300 dark:placeholder-gray-700 disabled:text-gray-400 dark:disabled:text-gray-600" placeholder="0" />
                     <div className="flex flex-col space-y-1">
                       <button 
                          onClick={() => handleOpponentScore('try')}
                          disabled={gameStatus === 'finished' || !isInitialized}
-                         className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 text-xs font-bold text-slate-600 rounded shadow-sm hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors disabled:opacity-50"
+                         className="w-6 h-6 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-slate-600 dark:text-gray-300 rounded shadow-sm hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 hover:border-green-200 dark:hover:border-green-900/30 transition-colors disabled:opacity-50"
                          title="Opponent Try (+4)"
                       >
                         T
@@ -958,7 +978,7 @@ const App: React.FC = () => {
                       <button 
                          onClick={() => handleOpponentScore('kick')}
                          disabled={gameStatus === 'finished' || !isInitialized}
-                         className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 text-xs font-bold text-slate-600 rounded shadow-sm hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors disabled:opacity-50"
+                         className="w-6 h-6 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-slate-600 dark:text-gray-300 rounded shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-900/30 transition-colors disabled:opacity-50"
                          title="Opponent Kick (+2)"
                       >
                         K
@@ -970,14 +990,14 @@ const App: React.FC = () => {
               
               {/* Right: Actions */}
               <div className="flex-none w-auto sm:w-64 flex justify-end items-center space-x-3">
-                 <Button variant="secondary" onClick={handleBackToDashboard} className="text-xs sm:text-sm px-4 py-2 shadow-sm bg-white hover:bg-gray-50 text-slate-600 rounded-full border border-gray-100">
+                 <Button variant="secondary" onClick={handleBackToDashboard} className="text-xs sm:text-sm px-4 py-2 shadow-sm bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-slate-600 dark:text-gray-300 rounded-full border border-gray-100 dark:border-white/5">
                    <span className="flex items-center">
                      <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                      <span className="hidden sm:inline">Exit</span>
                    </span>
                  </Button>
 
-                <Button variant="secondary" onClick={downloadStats} className="text-xs sm:text-sm px-4 py-2 shadow-sm bg-white hover:bg-gray-50 text-slate-600 rounded-full border border-gray-100">
+                <Button variant="secondary" onClick={downloadStats} className="text-xs sm:text-sm px-4 py-2 shadow-sm bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-slate-600 dark:text-gray-300 rounded-full border border-gray-100 dark:border-white/5">
                   <span className="flex items-center">
                     <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     <span className="hidden sm:inline">Export</span>
@@ -987,62 +1007,74 @@ const App: React.FC = () => {
                 {isInitialized && gameStatus !== 'finished' && (
                   <Button variant="danger" onClick={() => setIsResetModalOpen(true)} className="text-xs sm:text-sm px-4 py-2 shadow-sm rounded-full">Reset</Button>
                 )}
+
+                <button 
+                   onClick={toggleTheme} 
+                   className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                   title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                 >
+                   {darkMode ? (
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                   ) : (
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                   )}
+                 </button>
               </div>
             </div>
           </header>
 
           {/* Game Control Toolbar */}
-          <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex items-center justify-between shadow-sm z-40 relative">
+          <div className="bg-white/80 dark:bg-[#1A1A1C]/80 backdrop-blur-md border-b border-gray-200/50 dark:border-white/5 px-4 py-3 flex items-center justify-between shadow-sm z-40 relative transition-colors">
             {/* Left: View Toggles */}
             <div className="flex items-center space-x-4">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:inline">View:</span>
-              <div className="flex bg-gray-100/80 p-1 rounded-lg">
-                <button onClick={() => setViewMode('total')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'total' ? 'bg-white text-slate-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Full Game</button>
-                <button onClick={() => setViewMode('1st')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '1st' ? 'bg-white text-slate-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>1st Half</button>
-                <button onClick={() => setViewMode('2nd')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '2nd' ? 'bg-white text-slate-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>2nd Half</button>
+              <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider hidden sm:inline">View:</span>
+              <div className="flex bg-gray-100/80 dark:bg-white/10 p-1 rounded-lg">
+                <button onClick={() => setViewMode('total')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'total' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>Full Game</button>
+                <button onClick={() => setViewMode('1st')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '1st' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>1st Half</button>
+                <button onClick={() => setViewMode('2nd')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '2nd' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>2nd Half</button>
               </div>
             </div>
 
             {/* Center: Match Timer & Possession */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-4">
               {/* Possession Widget */}
-              <div className="hidden lg:flex items-center bg-gray-100 rounded-full p-1 border border-gray-200">
+              <div className="hidden lg:flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-1 border border-gray-200 dark:border-white/5">
                 <button 
                   onClick={() => setPossessionMode('attack')}
-                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all ${possessionMode === 'attack' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all ${possessionMode === 'attack' ? 'bg-white dark:bg-white/20 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                 >
                   Attack
                 </button>
                 <div className="px-2 w-24">
                    {/* Progress Bar */}
-                   <div className="w-full h-1.5 bg-gray-300 rounded-full overflow-hidden">
+                   <div className="w-full h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div 
-                         className="h-full bg-blue-500 transition-all duration-1000"
+                         className="h-full bg-blue-500" 
                          style={{ width: `${matchTime > 0 ? (possessionSeconds / matchTime) * 100 : 50}%` }}
                       />
                    </div>
-                   <div className="text-[9px] text-center font-mono mt-0.5 text-gray-500">
+                   <div className="text-[9px] text-center font-mono mt-0.5 text-gray-500 dark:text-gray-400">
                       {matchTime > 0 ? ((possessionSeconds / matchTime) * 100).toFixed(0) : 0}% Poss.
                    </div>
                 </div>
                 <button 
                   onClick={() => setPossessionMode('defense')}
-                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all ${possessionMode === 'defense' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all ${possessionMode === 'defense' ? 'bg-white dark:bg-white/20 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                 >
                   Defend
                 </button>
               </div>
 
               {/* Timer */}
-              <div className="flex items-center space-x-3 bg-white px-4 py-1.5 rounded-full border border-gray-100 shadow-apple">
+              <div className="flex items-center space-x-3 bg-white dark:bg-white/5 px-4 py-1.5 rounded-full border border-gray-100 dark:border-white/5 shadow-apple dark:shadow-none">
                 <button 
                   type="button"
                   onClick={toggleTimer}
                   disabled={gameStatus === 'finished' || !isInitialized}
                   className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
                     isTimerRunning 
-                      ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                      : 'bg-green-100 text-green-600 hover:bg-green-200'
+                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50' 
+                      : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
                   } ${gameStatus === 'finished' || !isInitialized ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title={isTimerRunning ? "Pause Timer" : "Start Timer"}
                 >
@@ -1057,14 +1089,14 @@ const App: React.FC = () => {
                   )}
                 </button>
                 
-                <span className={`text-2xl font-mono font-medium tabular-nums leading-none tracking-tight ${isTimerRunning ? 'text-slate-900' : 'text-gray-400'}`}>
+                <span className={`text-2xl font-mono font-medium tabular-nums leading-none tracking-tight ${isTimerRunning ? 'text-slate-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>
                   {formatTime(matchTime)}
                 </span>
 
                 <button 
                   type="button"
                   onClick={resetTimer}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                  className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1"
                   title="Reset Timer"
                   disabled={matchTime === 0 || !isInitialized}
                 >
@@ -1082,8 +1114,8 @@ const App: React.FC = () => {
                 onClick={() => setIsPhaseModalOpen(true)}
                 className={`flex items-center space-x-2 px-4 py-2 border rounded-full text-xs font-bold transition-colors shadow-sm ${
                   gameStatus === '1st'
-                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200'
-                    : 'bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-900/50'
+                    : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 border-orange-200 dark:border-orange-900/50'
                 }`}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1097,7 +1129,7 @@ const App: React.FC = () => {
               </button>
             ) : (
                gameStatus === 'finished' && (
-                  <span className="text-xs font-medium text-green-600 flex items-center bg-green-50 px-3 py-1.5 rounded-lg border border-green-100 shadow-sm">
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400 flex items-center bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-lg border border-green-100 dark:border-green-900/30 shadow-sm">
                     <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                     Match Complete
                   </span>
@@ -1119,18 +1151,18 @@ const App: React.FC = () => {
                   opponentName: opponentName || 'Opponent'
                }} />
             ) : (
-            <div className="bg-white rounded-2xl shadow-apple border border-gray-100 overflow-hidden mx-auto max-w-full">
+            <div className="bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden mx-auto max-w-full transition-colors">
                 <div className="overflow-x-auto">
                     <table className="min-w-max border-collapse w-full mx-auto">
-                    <thead className="bg-gray-50/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                    <thead className="bg-gray-50/50 dark:bg-white/5 text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">
                         <tr>
-                        <th className="p-4 sticky left-0 z-30 bg-gray-50/95 backdrop-blur-sm border-b border-gray-100 text-center w-[60px]">#</th>
-                        <th className="p-4 sticky left-[60px] z-30 bg-gray-50/95 backdrop-blur-sm border-b border-gray-100 text-left w-[200px] border-r border-gray-100">Player Name</th>
+                        <th className="p-4 sticky left-0 z-30 bg-gray-50/95 dark:bg-[#1A1A1C]/95 backdrop-blur-sm border-b border-gray-100 dark:border-white/5 text-center w-[60px]">#</th>
+                        <th className="p-4 sticky left-[60px] z-30 bg-gray-50/95 dark:bg-[#1A1A1C]/95 backdrop-blur-sm border-b border-gray-100 dark:border-white/5 text-left w-[200px] border-r border-gray-100 dark:border-white/5">Player Name</th>
                         {STAT_CONFIGS.map(config => (
-                            <th key={config.key} className="p-4 border-b border-gray-100 text-center min-w-[160px]">
+                            <th key={config.key} className="p-4 border-b border-gray-100 dark:border-white/5 text-center min-w-[160px]">
                             <div className="flex flex-col items-center">
-                                <span className="font-heading text-slate-700">{config.label}</span>
-                                <span className="text-[10px] text-gray-400 font-normal normal-case mt-0.5">
+                                <span className="font-heading text-slate-700 dark:text-gray-200">{config.label}</span>
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-normal normal-case mt-0.5">
                                 {viewMode === 'total' ? 'Full' : viewMode === '1st' ? '1st Half' : '2nd Half'} Total: {statsMeta.totals[config.key]}
                                 </span>
                             </div>
@@ -1138,7 +1170,7 @@ const App: React.FC = () => {
                         ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                         {displayPlayers.map((player, index) => (
                         <PlayerRow
                             key={player.id}
@@ -1164,17 +1196,17 @@ const App: React.FC = () => {
             <div className="max-w-[calc(100%-1rem)] mx-auto mt-8 mb-24">
                 <button 
                   onClick={() => setIsMatchLogOpen(!isMatchLogOpen)}
-                  className="w-full flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-apple border border-gray-100 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between bg-white dark:bg-[#1A1A1C] px-6 py-4 rounded-2xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg font-heading font-bold text-slate-800">Match Log</h3>
-                      <p className="text-xs text-gray-500 font-medium">{gameLog.length} Events Recorded</p>
+                      <h3 className="text-lg font-heading font-bold text-slate-800 dark:text-white text-left">Match Log</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium text-left">{gameLog.length} Events Recorded</p>
                     </div>
                   </div>
                   <svg 
@@ -1186,9 +1218,9 @@ const App: React.FC = () => {
                 </button>
 
                 {isMatchLogOpen && gameLog.length > 0 && (
-                    <div className="mt-4 bg-white border border-gray-100 rounded-2xl shadow-apple overflow-hidden animate-in fade-in slide-in-from-top-4">
-                        <table className="min-w-full divide-y divide-gray-50">
-                            <thead className="bg-gray-50/50">
+                    <div className="mt-4 bg-white dark:bg-[#1A1A1C] border border-gray-100 dark:border-white/5 rounded-2xl shadow-apple dark:shadow-none overflow-hidden animate-in fade-in slide-in-from-top-4">
+                        <table className="min-w-full divide-y divide-gray-50 dark:divide-white/5">
+                            <thead className="bg-gray-50/50 dark:bg-white/5">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Player</th>
@@ -1197,24 +1229,24 @@ const App: React.FC = () => {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Notes</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-50">
+                            <tbody className="bg-white dark:bg-[#1A1A1C] divide-y divide-gray-50 dark:divide-white/5">
                                 {gameLog.map((entry) => (
-                                    <tr key={entry.id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                                            {entry.formattedTime} <span className="text-xs text-gray-300 ml-1">({entry.period})</span>
+                                    <tr key={entry.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
+                                            {entry.formattedTime} <span className="text-xs text-gray-300 dark:text-gray-600 ml-1">({entry.period})</span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">
                                             {entry.playerName}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                                                entry.type === 'penalty' ? 'bg-red-50 text-red-700' : 
-                                                entry.type === 'error' ? 'bg-orange-50 text-orange-700' : 
-                                                entry.type === 'try' ? 'bg-green-50 text-green-700' :
-                                                entry.type === 'yellow_card' ? 'bg-yellow-50 text-yellow-700' :
+                                                entry.type === 'penalty' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 
+                                                entry.type === 'error' ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' : 
+                                                entry.type === 'try' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' :
+                                                entry.type === 'yellow_card' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' :
                                                 entry.type === 'red_card' ? 'bg-red-600 text-white' :
-                                                entry.type === 'substitution' ? 'bg-blue-50 text-blue-700' :
-                                                'bg-gray-100 text-gray-600'
+                                                entry.type === 'substitution' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' :
+                                                'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                                             }`}>
                                                 {entry.type === 'penalty' ? 'Penalty' : 
                                                  entry.type === 'error' ? 'Error' :
@@ -1224,14 +1256,14 @@ const App: React.FC = () => {
                                                  entry.type === 'substitution' ? 'Substitution' : entry.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                             {entry.location || '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                             {entry.reason ? (
                                                 <span className="italic">{entry.reason}</span>
                                             ) : (
-                                                <span className="text-gray-300">-</span>
+                                                <span className="text-gray-300 dark:text-gray-600">-</span>
                                             )}
                                         </td>
                                     </tr>
@@ -1244,7 +1276,7 @@ const App: React.FC = () => {
           </main>
           
           {/* Bottom Control Bar */}
-          <div className="bg-white/80 backdrop-blur-md border-t border-gray-200/50 px-6 py-4 flex-none z-20 flex items-center justify-between pb-8 safe-area-bottom">
+          <div className="bg-white/80 dark:bg-[#1A1A1C]/80 backdrop-blur-md border-t border-gray-200/50 dark:border-white/5 px-6 py-4 flex-none z-20 flex items-center justify-between pb-8 safe-area-bottom transition-colors">
             <div className="flex items-center space-x-6">
               <Toggle 
                 label="Penalty Details" 
@@ -1260,12 +1292,12 @@ const App: React.FC = () => {
                 onChange={(val) => setSettings(s => ({ ...s, promptErrorReason: val }))}
               />
               
-              <div className="h-8 w-px bg-gray-200 mx-2"></div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-2"></div>
               
               <button 
                 onClick={() => setCardAssignmentState({ isOpen: true, type: 'yellow' })}
                 disabled={gameStatus === 'finished' || !isInitialized}
-                className="flex items-center px-4 py-2 bg-yellow-100/50 text-yellow-700 hover:bg-yellow-100 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-yellow-200/50"
+                className="flex items-center px-4 py-2 bg-yellow-100/50 dark:bg-yellow-900/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-yellow-200/50 dark:border-yellow-700/30"
               >
                  <span className="w-4 h-4 bg-yellow-400 rounded-sm mr-2.5 shadow-sm"></span>
                  Yellow Card
@@ -1274,14 +1306,14 @@ const App: React.FC = () => {
               <button 
                 onClick={() => setCardAssignmentState({ isOpen: true, type: 'red' })}
                 disabled={gameStatus === 'finished' || !isInitialized}
-                className="flex items-center px-4 py-2 bg-red-100/50 text-red-700 hover:bg-red-100 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200/50"
+                className="flex items-center px-4 py-2 bg-red-100/50 dark:bg-red-900/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200/50 dark:border-red-700/30"
               >
                  <span className="w-4 h-4 bg-red-500 rounded-sm mr-2.5 shadow-sm"></span>
                  Red Card
               </button>
             </div>
 
-            <div className="flex items-center space-x-2 text-xs font-medium text-gray-400">
+            <div className="flex items-center space-x-2 text-xs font-medium text-gray-400 dark:text-gray-500">
                <span className="inline-block w-2 h-2 rounded-full bg-yellow-400/80"></span>
                <span className="hidden sm:inline">Team Leader</span>
             </div>

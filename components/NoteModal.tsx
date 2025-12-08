@@ -51,19 +51,19 @@ export const NoteModal: React.FC<NoteModalProps> = ({
       />
       
       {/* Modal Content */}
-      <div className="relative bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-200">
-        <h3 className="text-lg font-bold text-gray-900">
+      <div className="relative bg-white dark:bg-[#1A1A1C] rounded-xl shadow-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-white/10 animate-in fade-in zoom-in duration-200">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
           {title}
         </h3>
-        <p className="text-sm text-gray-500 mb-4">Player: <span className="font-semibold text-gray-800">{playerName || 'Unknown'}</span></p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Player: <span className="font-semibold text-gray-800 dark:text-gray-200">{playerName || 'Unknown'}</span></p>
         
         <form onSubmit={handleSubmit}>
           {showLocation && (
             <div className="mb-4">
-              <label htmlFor="location" className="block text-xs font-bold uppercase text-gray-500 mb-1">Field Position</label>
+              <label htmlFor="location" className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Field Position</label>
               <select
                 id="location"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               >
@@ -76,12 +76,12 @@ export const NoteModal: React.FC<NoteModalProps> = ({
           )}
 
           <div className="mb-4">
-            <label htmlFor="reason" className="block text-xs font-bold uppercase text-gray-500 mb-1">Reason (Optional)</label>
+            <label htmlFor="reason" className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Reason (Optional)</label>
             <input
               ref={inputRef}
               id="reason"
               type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900 placeholder-gray-400"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900 placeholder-gray-400"
               placeholder="e.g. High Tackle, Knock on..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -93,7 +93,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
             <Button 
               variant="secondary" 
               onClick={onClose}
-              className="text-xs"
+              className="text-xs bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/20"
             >
               Skip
             </Button>
