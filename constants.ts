@@ -27,5 +27,7 @@ export const createInitialPlayers = (): Player[] =>
     name: '',
     number: (i + 1).toString(),
     stats: { ...INITIAL_STATS },
-    cardStatus: 'none'
+    cardStatus: 'none',
+    // First 13 are starters (On Field), rest are bench (Off)
+    isOnField: i < 13
   }));

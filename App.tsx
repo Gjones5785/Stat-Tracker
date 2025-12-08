@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { PlayerRow } from './components/PlayerRow';
 import { Button } from './components/Button';
@@ -10,9 +9,9 @@ import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { TeamSelectionModal } from './components/TeamSelectionModal';
 import { CardAssignmentModal } from './components/CardAssignmentModal';
-import { MatchCharts } from './components/MatchCharts';
 import { Player, StatKey, PlayerStats, GameLogEntry, MatchHistoryItem, SquadPlayer } from './types';
 import { STAT_CONFIGS, createInitialPlayers, INITIAL_STATS } from './constants';
+import { MatchCharts } from './components/MatchCharts';
 
 const App: React.FC = () => {
   // --- AUTH STATE ---
@@ -385,11 +384,13 @@ const App: React.FC = () => {
   // --- TRACKER LOGIC ---
 
   const displayPlayers = useMemo(() => {
+    // 1. Get base stats depending on mode
     const sourceStats = (gameStatus === 'finished' && fullMatchStats) 
       ? players.map(p => ({ ...p, stats: fullMatchStats[p.id] || p.stats }))
       : players;
 
-    return sourceStats.map(player => {
+    // 2. Map stats for view mode (1st/2nd half diffs)
+    const mappedPlayers = sourceStats.map(player => {
       const currentStats = player.stats;
       const htStats = firstHalfStats?.[player.id] || INITIAL_STATS;
 
@@ -412,22 +413,40 @@ const App: React.FC = () => {
         stats: displayedStats
       };
     });
+
+    // 3. SORT: Players "On Field" go to top, "Off Field" to bottom.
+    //    Secondary sort by Jersey Number numerical value.
+    return mappedPlayers.sort((a, b) => {
+      // If both have same field status, sort by number
+      if (a.isOnField === b.isOnField) {
+        return parseInt(a.number) - parseInt(b.number);
+      }
+      // Otherwise, OnField (true) comes first
+      return a.isOnField ? -1 : 1;
+    });
+
   }, [players, firstHalfStats, fullMatchStats, viewMode, gameStatus]);
 
   const statsMeta = useMemo(() => {
     const totals = { ...INITIAL_STATS };
     const maxValues = { ...INITIAL_STATS };
+    const leaderCounts = { ...INITIAL_STATS };
 
     displayPlayers.forEach(p => {
       (Object.keys(p.stats) as StatKey[]).forEach(key => {
         const val = p.stats[key];
         totals[key] += val;
+        
+        // Logic to track Max Value AND how many people have it
         if (val > maxValues[key]) {
           maxValues[key] = val;
+          leaderCounts[key] = 1; // New max found, reset count to 1
+        } else if (val === maxValues[key] && val > 0) {
+          leaderCounts[key] += 1; // Tie found, increment count
         }
       });
     });
-    return { totals, maxValues };
+    return { totals, maxValues, leaderCounts };
   }, [displayPlayers]);
 
   const handleOpponentScore = useCallback((type: 'try' | 'kick') => {
@@ -528,6 +547,34 @@ const App: React.FC = () => {
     }
 
   }, [players, gameStatus, viewMode, firstHalfStats, matchTime, settings, isInitialized]);
+
+  const handleToggleFieldStatus = useCallback((id: string) => {
+    if (!isInitialized || gameStatus === 'finished') return;
+
+    // Log the substitution event
+    const player = players.find(p => p.id === id);
+    if (player) {
+      const isComingOn = !player.isOnField; // Toggling status
+      const newEntry: GameLogEntry = {
+        id: Date.now().toString(),
+        timestamp: matchTime,
+        formattedTime: formatTime(matchTime),
+        playerId: player.id,
+        playerName: player.name || 'Unknown Player',
+        playerNumber: player.number,
+        type: 'substitution',
+        reason: isComingOn ? 'Subbed On' : 'Subbed Off',
+        period: gameStatus === '1st' ? '1st' : '2nd'
+      };
+      setGameLog(prev => [newEntry, ...prev]);
+    }
+
+    setPlayers(currentPlayers => 
+      currentPlayers.map(p => 
+        p.id === id ? { ...p, isOnField: !p.isOnField } : p
+      )
+    );
+  }, [isInitialized, gameStatus, players, matchTime]);
 
   const handleCardAssignment = (playerId: string, reason: string) => {
     if (!isInitialized || gameStatus === 'finished') return;
@@ -699,7 +746,7 @@ const App: React.FC = () => {
     csvContent += `Coach,${escapeCsv(currentUser || 'Unknown')}\n\n`;
 
     const statHeaders = STAT_CONFIGS.map(c => escapeCsv(c.label)).join(',');
-    const baseHeaderRow = `#,Player Name,Card,${statHeaders}`;
+    const baseHeaderRow = `#,Player Name,On Field,Card,${statHeaders}`;
 
     const generateBlock = (title: string, sourceStats: Record<string, PlayerStats> | null, subtractStats?: Record<string, PlayerStats> | null) => {
       let block = `${title}\n${baseHeaderRow}\n`;
@@ -717,7 +764,8 @@ const App: React.FC = () => {
         }
         const statsValues = STAT_CONFIGS.map(c => stats[c.key]).join(',');
         const cardVal = p.cardStatus && p.cardStatus !== 'none' ? p.cardStatus.toUpperCase() : '';
-        block += `${p.number},${escapeCsv(p.name)},${cardVal},${statsValues}\n`;
+        const onFieldVal = p.isOnField ? 'YES' : 'NO';
+        block += `${p.number},${escapeCsv(p.name)},${onFieldVal},${cardVal},${statsValues}\n`;
       });
       return block + '\n';
     };
@@ -758,6 +806,14 @@ const App: React.FC = () => {
 
   return (
     <>
+      <ConfirmationModal 
+        isOpen={isDiscardModalOpen}
+        title="Discard Active Match?"
+        message="Are you sure you want to discard the active match? All unsaved progress will be lost and this cannot be undone."
+        onConfirm={performDiscardMatch}
+        onCancel={() => setIsDiscardModalOpen(false)}
+      />
+
       <TeamSelectionModal 
          isOpen={isTeamSelectionOpen}
          squad={squad}
@@ -771,21 +827,13 @@ const App: React.FC = () => {
         message={notification?.message || ''}
         onClose={() => setNotification(null)}
       />
-
+      
       <CardAssignmentModal
         isOpen={cardAssignmentState.isOpen}
         type={cardAssignmentState.type}
         players={players}
         onConfirm={handleCardAssignment}
         onCancel={() => setCardAssignmentState({ isOpen: false, type: null })}
-      />
-
-      <ConfirmationModal 
-        isOpen={isDiscardModalOpen}
-        title="Discard Active Match?"
-        message="Are you sure you want to discard the active match? All unsaved progress will be lost and this cannot be undone."
-        onConfirm={performDiscardMatch}
-        onCancel={() => setIsDiscardModalOpen(false)}
       />
 
       {currentScreen === 'dashboard' ? (
@@ -1060,6 +1108,17 @@ const App: React.FC = () => {
           {/* Main Content Area */}
           <main className="flex-1 overflow-auto relative w-full z-0 mx-auto px-4 py-4">
             
+            {gameStatus === 'finished' && fullMatchStats ? (
+               <MatchCharts matchData={{
+                  players: displayPlayers,
+                  leftScore: parseInt(leftScore || '0'),
+                  rightScore: parseInt(rightScore || '0'),
+                  possessionSeconds,
+                  matchTime,
+                  teamName: teamName || 'Team',
+                  opponentName: opponentName || 'Opponent'
+               }} />
+            ) : (
             <div className="bg-white rounded-2xl shadow-apple border border-gray-100 overflow-hidden mx-auto max-w-full">
                 <div className="overflow-x-auto">
                     <table className="min-w-max border-collapse w-full mx-auto">
@@ -1088,8 +1147,10 @@ const App: React.FC = () => {
                             onStatChange={handleStatChange}
                             onIdentityChange={handleIdentityChange}
                             onCardAction={handleCardAction}
+                            onToggleFieldStatus={handleToggleFieldStatus}
                             teamTotals={statsMeta.totals}
                             maxValues={statsMeta.maxValues}
+                            leaderCounts={statsMeta.leaderCounts}
                             isReadOnly={gameStatus === 'finished' || (viewMode === '1st' && gameStatus !== '1st') || !isInitialized}
                         />
                         ))}
@@ -1097,6 +1158,7 @@ const App: React.FC = () => {
                     </table>
                 </div>
             </div>
+            )}
 
             {/* Collapsible Match Event Log */}
             <div className="max-w-[calc(100%-1rem)] mx-auto mt-8 mb-24">
@@ -1151,13 +1213,15 @@ const App: React.FC = () => {
                                                 entry.type === 'try' ? 'bg-green-50 text-green-700' :
                                                 entry.type === 'yellow_card' ? 'bg-yellow-50 text-yellow-700' :
                                                 entry.type === 'red_card' ? 'bg-red-600 text-white' :
+                                                entry.type === 'substitution' ? 'bg-blue-50 text-blue-700' :
                                                 'bg-gray-100 text-gray-600'
                                             }`}>
                                                 {entry.type === 'penalty' ? 'Penalty' : 
                                                  entry.type === 'error' ? 'Error' :
                                                  entry.type === 'try' ? 'Try' :
                                                  entry.type === 'yellow_card' ? 'Yellow Card' :
-                                                 entry.type === 'red_card' ? 'Red Card' : entry.type}
+                                                 entry.type === 'red_card' ? 'Red Card' : 
+                                                 entry.type === 'substitution' ? 'Substitution' : entry.type}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -1203,7 +1267,7 @@ const App: React.FC = () => {
                 disabled={gameStatus === 'finished' || !isInitialized}
                 className="flex items-center px-4 py-2 bg-yellow-100/50 text-yellow-700 hover:bg-yellow-100 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-yellow-200/50"
               >
-                 <span className="w-3 h-3 bg-yellow-400 rounded-sm mr-2.5 shadow-sm"></span>
+                 <span className="w-4 h-4 bg-yellow-400 rounded-sm mr-2.5 shadow-sm"></span>
                  Yellow Card
               </button>
               
@@ -1212,7 +1276,7 @@ const App: React.FC = () => {
                 disabled={gameStatus === 'finished' || !isInitialized}
                 className="flex items-center px-4 py-2 bg-red-100/50 text-red-700 hover:bg-red-100 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200/50"
               >
-                 <span className="w-3 h-3 bg-red-500 rounded-sm mr-2.5 shadow-sm"></span>
+                 <span className="w-4 h-4 bg-red-500 rounded-sm mr-2.5 shadow-sm"></span>
                  Red Card
               </button>
             </div>

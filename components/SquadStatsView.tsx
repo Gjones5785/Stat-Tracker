@@ -187,7 +187,7 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                     required
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white text-gray-900 placeholder-gray-400"
                     placeholder="e.g. John Smith"
                   />
                 </div>
@@ -197,7 +197,7 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                     type="text"
                     value={newPosition}
                     onChange={e => setNewPosition(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white text-gray-900 placeholder-gray-400"
                     placeholder="e.g. Prop"
                   />
                 </div>

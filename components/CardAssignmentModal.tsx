@@ -66,7 +66,7 @@ export const CardAssignmentModal: React.FC<CardAssignmentModalProps> = ({
             <select
               value={selectedPlayerId}
               onChange={(e) => setSelectedPlayerId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               required
             >
               <option value="">-- Choose Player --</option>
@@ -83,7 +83,7 @@ export const CardAssignmentModal: React.FC<CardAssignmentModalProps> = ({
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-400"
               rows={3}
               placeholder="e.g. High Tackle, Professional Foul..."
             />

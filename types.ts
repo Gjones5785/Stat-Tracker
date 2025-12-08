@@ -1,4 +1,5 @@
 
+
 export interface PlayerIdentity {
   name: string;
   number: string;
@@ -46,7 +47,7 @@ export interface GameLogEntry {
   playerId: string;
   playerName: string;
   playerNumber: string;
-  type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error';
+  type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error' | 'substitution';
   reason?: string;
   location?: string; // e.g. "Defensive 20"
   period: '1st' | '2nd';

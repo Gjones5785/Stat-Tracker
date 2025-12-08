@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TEAM_SIZE } from '../constants';
 
@@ -9,6 +8,7 @@ interface CompactStatControlProps {
   label: string;
   teamTotal: number;
   maxInTeam: number;
+  leaderCount?: number;
   isReadOnly?: boolean;
   isNegative?: boolean;
 }
@@ -20,6 +20,7 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
   label,
   teamTotal,
   maxInTeam,
+  leaderCount = 1,
   isReadOnly = false,
   isNegative = false
 }) => {
@@ -31,11 +32,13 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
 
   // MVP Check: Value must match the max and be greater than 0
   const isLeader = maxInTeam > 0 && value === maxInTeam;
+  // Shared Leader Check: It is a leader, and more than 1 person has this score
+  const isShared = isLeader && leaderCount > 1;
 
   // Determine styles based on Leader status and whether the stat is negative (bad)
   let containerStyles = 'bg-gray-50 border-gray-200';
   let barStyles = 'bg-blue-100';
-  let leaderLabelColor = 'text-yellow-400';
+  let leaderLabelColor = 'text-green-600';
 
   if (isLeader) {
     if (isNegative) {
@@ -43,20 +46,25 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
       containerStyles = 'bg-red-50 border-red-400 shadow-sm ring-1 ring-red-400/30';
       barStyles = 'bg-red-200/50';
       leaderLabelColor = 'text-red-500';
-    } else {
-      // Gold styling for good stats leaders
+    } else if (isShared) {
+      // Yellow styling for Joint Leaders
       containerStyles = 'bg-yellow-50 border-yellow-400 shadow-sm ring-1 ring-yellow-400/30';
       barStyles = 'bg-yellow-200/50';
-      leaderLabelColor = 'text-yellow-400';
+      leaderLabelColor = 'text-yellow-600';
+    } else {
+      // Green styling for Unique Team Leader
+      containerStyles = 'bg-green-50 border-green-400 shadow-sm ring-1 ring-green-400/30';
+      barStyles = 'bg-green-200/50';
+      leaderLabelColor = 'text-green-600';
     }
   }
 
   return (
-    <div className={`flex items-center justify-center rounded-lg border p-1 w-full max-w-[140px] mx-auto transition-colors ${containerStyles}`}>
+    <div className={`flex items-center justify-center rounded-lg border p-1 w-full max-w-[150px] mx-auto transition-colors ${containerStyles}`}>
       <button
         onClick={onDecrement}
         disabled={value <= 0 || isReadOnly}
-        className={`w-8 h-8 flex items-center justify-center rounded bg-white font-bold shadow-sm border border-gray-100 active:bg-gray-100 touch-manipulation z-0 transition-opacity ${
+        className={`w-10 h-10 flex items-center justify-center rounded bg-white font-bold text-xl shadow-sm border border-gray-100 active:bg-gray-100 touch-manipulation z-0 transition-opacity ${
           isReadOnly ? 'opacity-30 cursor-not-allowed' : 'text-red-500 disabled:opacity-30 disabled:cursor-not-allowed'
         }`}
         aria-label={`Decrease ${label}`}
@@ -65,7 +73,7 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
       </button>
       
       {/* Value Display with Tooltip Trigger */}
-      <div className="group relative flex-1 mx-1 h-8">
+      <div className="group relative flex-1 mx-1 h-10">
         <div className={`absolute inset-0 flex items-center justify-center bg-white rounded border border-gray-100 overflow-hidden ${!isReadOnly ? 'cursor-help' : ''}`}>
           {/* Visual Trend Bar (Background) */}
           <div 
@@ -74,7 +82,7 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
           />
           
           {/* Numeric Value */}
-          <span className="relative z-10 font-bold text-lg text-gray-900 tabular-nums leading-none">
+          <span className="relative z-10 font-bold text-xl text-gray-900 tabular-nums leading-none">
             {value}
           </span>
         </div>
@@ -97,7 +105,7 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
               
               {isLeader && (
                  <span className={`col-span-2 text-center font-bold mt-1 uppercase tracking-wide text-[10px] ${leaderLabelColor}`}>
-                    {isNegative ? 'Highest Count' : 'Team Leader'}
+                    {isNegative ? 'Highest Count' : isShared ? 'Joint Leader' : 'Team Leader'}
                  </span>
               )}
             </div>
@@ -108,7 +116,7 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
       <button
         onClick={onIncrement}
         disabled={isReadOnly}
-        className={`w-8 h-8 flex items-center justify-center rounded bg-blue-600 text-white font-bold shadow-sm active:bg-blue-700 touch-manipulation z-0 transition-opacity ${
+        className={`w-10 h-10 flex items-center justify-center rounded bg-blue-600 text-white font-bold text-xl shadow-sm active:bg-blue-700 touch-manipulation z-0 transition-opacity ${
           isReadOnly ? 'opacity-30 cursor-not-allowed bg-gray-400' : ''
         }`}
         aria-label={`Increase ${label}`}

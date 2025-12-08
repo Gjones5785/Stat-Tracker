@@ -63,7 +63,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
               <label htmlFor="location" className="block text-xs font-bold uppercase text-gray-500 mb-1">Field Position</label>
               <select
                 id="location"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               >
@@ -81,7 +81,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
               ref={inputRef}
               id="reason"
               type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white text-gray-900 placeholder-gray-400"
               placeholder="e.g. High Tackle, Knock on..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
