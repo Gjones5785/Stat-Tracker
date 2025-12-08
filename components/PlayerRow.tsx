@@ -15,6 +15,7 @@ interface PlayerRowProps {
   maxValues: PlayerStats;
   leaderCounts: PlayerStats;
   isReadOnly?: boolean;
+  hideControls?: boolean;
 }
 
 export const PlayerRow: React.FC<PlayerRowProps> = memo(({
@@ -28,7 +29,8 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   teamTotals,
   maxValues,
   leaderCounts,
-  isReadOnly = false
+  isReadOnly = false,
+  hideControls = false
 }) => {
   // Determine Row Background based on Card Status
   let rowClass = isOdd ? 'bg-white dark:bg-[#1A1A1C]' : 'bg-gray-50 dark:bg-white/5';
@@ -116,9 +118,11 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
       {STAT_CONFIGS.map((config) => {
         // Logic: Input is disabled if read-only OR if player has a card AND the stat is NOT penalties.
         const isStatDisabled = isReadOnly || (hasActiveCard && config.key !== 'penaltiesConceded');
+        // Reduce width if controls are hidden to allow more stats to fit
+        const cellClass = hideControls ? "p-2 min-w-[90px]" : "p-2 min-w-[130px]";
 
         return (
-          <td key={config.key} className="p-2 min-w-[130px]">
+          <td key={config.key} className={cellClass}>
             <CompactStatControl
               label={config.label}
               value={player.stats[config.key]}
@@ -129,6 +133,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
               leaderCount={leaderCounts[config.key]}
               isReadOnly={isStatDisabled}
               isNegative={config.isNegative}
+              hideControls={hideControls}
             />
           </td>
         );

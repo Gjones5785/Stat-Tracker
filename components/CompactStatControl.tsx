@@ -11,6 +11,7 @@ interface CompactStatControlProps {
   leaderCount?: number;
   isReadOnly?: boolean;
   isNegative?: boolean;
+  hideControls?: boolean;
 }
 
 export const CompactStatControl: React.FC<CompactStatControlProps> = ({
@@ -22,7 +23,8 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
   maxInTeam,
   leaderCount = 1,
   isReadOnly = false,
-  isNegative = false
+  isNegative = false,
+  hideControls = false
 }) => {
   const average = (teamTotal / TEAM_SIZE).toFixed(1);
   const percentOfTotal = teamTotal > 0 ? ((value / teamTotal) * 100).toFixed(0) : '0';
@@ -60,21 +62,23 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
   }
 
   return (
-    <div className={`flex items-center justify-center rounded-lg border p-1 w-full max-w-[150px] mx-auto transition-colors ${containerStyles}`}>
-      <button
-        onClick={onDecrement}
-        disabled={value <= 0 || isReadOnly}
-        className={`w-10 h-10 flex items-center justify-center rounded bg-white dark:bg-white/10 font-bold text-xl shadow-sm border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/20 touch-manipulation z-0 transition-opacity ${
-          isReadOnly ? 'opacity-30 cursor-not-allowed text-gray-400' : 'text-red-500 dark:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed'
-        }`}
-        aria-label={`Decrease ${label}`}
-      >
-        −
-      </button>
+    <div className={`flex items-center justify-center rounded-lg ${!hideControls ? 'border p-1' : 'border py-1 px-2'} w-full ${!hideControls ? 'max-w-[150px]' : 'max-w-full'} mx-auto transition-colors ${containerStyles}`}>
+      {!hideControls && (
+        <button
+          onClick={onDecrement}
+          disabled={value <= 0 || isReadOnly}
+          className={`w-10 h-10 flex items-center justify-center rounded bg-white dark:bg-white/10 font-bold text-xl shadow-sm border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/20 touch-manipulation z-0 transition-opacity ${
+            isReadOnly ? 'opacity-30 cursor-not-allowed text-gray-400' : 'text-red-500 dark:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed'
+          }`}
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+      )}
       
       {/* Value Display with Tooltip Trigger */}
-      <div className="group relative flex-1 mx-1 h-10">
-        <div className={`absolute inset-0 flex items-center justify-center bg-white dark:bg-transparent rounded border border-gray-100 dark:border-white/5 overflow-hidden ${!isReadOnly ? 'cursor-help' : ''}`}>
+      <div className={`group relative flex-1 ${!hideControls ? 'mx-1' : ''} h-10`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-white dark:bg-transparent rounded border ${!hideControls ? 'border-gray-100 dark:border-white/5' : 'border-transparent'} overflow-hidden ${!isReadOnly ? 'cursor-help' : ''}`}>
           {/* Visual Trend Bar (Background) */}
           <div 
             className={`absolute bottom-0 left-0 top-0 transition-all duration-300 ease-out ${barStyles}`}
@@ -113,16 +117,18 @@ export const CompactStatControl: React.FC<CompactStatControlProps> = ({
         </div>
       </div>
       
-      <button
-        onClick={onIncrement}
-        disabled={isReadOnly}
-        className={`w-10 h-10 flex items-center justify-center rounded bg-blue-600 dark:bg-blue-600/90 text-white font-bold text-xl shadow-sm active:bg-blue-700 dark:active:bg-blue-600 touch-manipulation z-0 transition-opacity ${
-          isReadOnly ? 'opacity-30 cursor-not-allowed bg-gray-400 dark:bg-gray-700' : ''
-        }`}
-        aria-label={`Increase ${label}`}
-      >
-        +
-      </button>
+      {!hideControls && (
+        <button
+          onClick={onIncrement}
+          disabled={isReadOnly}
+          className={`w-10 h-10 flex items-center justify-center rounded bg-blue-600 dark:bg-blue-600/90 text-white font-bold text-xl shadow-sm active:bg-blue-700 dark:active:bg-blue-600 touch-manipulation z-0 transition-opacity ${
+            isReadOnly ? 'opacity-30 cursor-not-allowed bg-gray-400 dark:bg-gray-700' : ''
+          }`}
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      )}
     </div>
   );
 };

@@ -30,6 +30,8 @@ export interface Player {
   squadId?: string; // Link to the squad roster
   cardStatus?: 'none' | 'yellow' | 'red';
   sinBinStartTime?: number; // Match time in seconds when yellow card was issued
+  totalSecondsOnField: number; // Accumulated time in seconds
+  lastSubTime?: number; // Timestamp of the last time they went ON field
 }
 
 export interface SquadPlayer {

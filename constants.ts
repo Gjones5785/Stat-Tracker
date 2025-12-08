@@ -29,5 +29,7 @@ export const createInitialPlayers = (): Player[] =>
     stats: { ...INITIAL_STATS },
     cardStatus: 'none',
     // First 13 are starters (On Field), rest are bench (Off)
-    isOnField: i < 13
+    isOnField: i < 13,
+    totalSecondsOnField: 0,
+    lastSubTime: i < 13 ? 0 : undefined // Starters start at 0
   }));

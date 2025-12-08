@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { AuthScreen } from './components/AuthScreen';
@@ -8,6 +9,7 @@ import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { MatchCharts } from './components/MatchCharts';
+import { MatchEventLog } from './components/MatchEventLog'; // Imported new component
 import { Button } from './components/Button';
 import { 
   Player, 
@@ -148,6 +150,7 @@ export const App: React.FC = () => {
   const [period, setPeriod] = useState<'1st' | '2nd'>('1st');
   const [gameLog, setGameLog] = useState<GameLogEntry[]>([]);
   const [opponentScore, setOpponentScore] = useState(0);
+  const [homeScoreAdjustment, setHomeScoreAdjustment] = useState(0);
   
   // New State: Set Completion
   const [setsCompleted, setSetsCompleted] = useState(0);
@@ -246,7 +249,8 @@ export const App: React.FC = () => {
       oppName: string,
       id: string,
       sc: number, // setsCompleted
-      ts: number  // totalSets
+      ts: number, // totalSets
+      hAdj: number // homeScoreAdjustment
   ) => {
       localStorage.setItem('ACTIVE_MATCH_STATE', JSON.stringify({
           players: p,
@@ -258,6 +262,7 @@ export const App: React.FC = () => {
           id: id,
           setsCompleted: sc,
           totalSets: ts,
+          homeScoreAdjustment: hAdj,
           date: new Date().toISOString()
       }));
   }, []);
@@ -266,6 +271,7 @@ export const App: React.FC = () => {
     const newPlayers: Player[] = Array.from({ length: TEAM_SIZE }, (_, i) => {
         const jersey = (i + 1).toString();
         const selection = selections.find(s => s.jersey === jersey);
+        const isOnField = i < 13;
         return {
             id: `player-${i}`,
             name: selection ? selection.name : '',
@@ -273,7 +279,9 @@ export const App: React.FC = () => {
             ...(selection && selection.squadId ? { squadId: selection.squadId } : {}),
             stats: { ...INITIAL_STATS },
             cardStatus: 'none',
-            isOnField: i < 13
+            isOnField: isOnField,
+            totalSecondsOnField: 0,
+            lastSubTime: isOnField ? 0 : undefined // Start timer for starters
         };
     });
 
@@ -288,10 +296,11 @@ export const App: React.FC = () => {
     setOpponentScore(0);
     setSetsCompleted(0);
     setTotalSets(0);
+    setHomeScoreAdjustment(0);
     setActiveMatchId(newId);
     setIsTimerRunning(false);
     
-    saveActiveState(newPlayers, 0, '1st', [], 0, newOpponent, newId, 0, 0);
+    saveActiveState(newPlayers, 0, '1st', [], 0, newOpponent, newId, 0, 0, 0);
     
     setIsTeamSelectOpen(false);
     setCurrentScreen('tracker');
@@ -309,6 +318,7 @@ export const App: React.FC = () => {
           setOpponentName(state.opponentName);
           setSetsCompleted(state.setsCompleted || 0);
           setTotalSets(state.totalSets || 0);
+          setHomeScoreAdjustment(state.homeScoreAdjustment || 0);
           setActiveMatchId(state.id);
           setCurrentScreen('tracker');
       }
@@ -330,8 +340,9 @@ export const App: React.FC = () => {
       setSetsCompleted(0);
       setTotalSets(0);
       setOpponentName('');
+      setHomeScoreAdjustment(0);
       setIsDiscardModalOpen(false);
-  };
+    };
   
   // Timer Logic
   useEffect(() => {
@@ -366,9 +377,9 @@ export const App: React.FC = () => {
   // Persist state when meaningful changes occur
   useEffect(() => {
       if (currentScreen === 'tracker' && activeMatchId) {
-          saveActiveState(players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, setsCompleted, totalSets);
+          saveActiveState(players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, setsCompleted, totalSets, homeScoreAdjustment);
       }
-  }, [players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, currentScreen, saveActiveState, setsCompleted, totalSets]);
+  }, [players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, currentScreen, saveActiveState, setsCompleted, totalSets, homeScoreAdjustment]);
 
   // --- TIMER GUARD ---
   const checkTimerActive = () => {
@@ -411,6 +422,37 @@ export const App: React.FC = () => {
      
      // Normal Update
      updatePlayerStatsState(playerId, stat, delta);
+
+     // Log Significant Positive Stats (Tries, Kicks)
+     if (delta > 0) {
+        const player = players.find(p => p.id === playerId);
+        if (player) {
+           if (stat === 'triesScored') {
+              setGameLog(prev => [...prev, {
+                  id: Date.now().toString(),
+                  timestamp: matchTime,
+                  formattedTime: formatTime(matchTime),
+                  playerId: player.id,
+                  playerName: player.name,
+                  playerNumber: player.number,
+                  type: 'try',
+                  period
+              }]);
+           } else if (stat === 'kicks') {
+              setGameLog(prev => [...prev, {
+                  id: Date.now().toString(),
+                  timestamp: matchTime,
+                  formattedTime: formatTime(matchTime),
+                  playerId: player.id,
+                  playerName: player.name,
+                  playerNumber: player.number,
+                  type: 'other', // or 'kick' if type updated
+                  reason: 'Kick / Conversion',
+                  period
+              }]);
+           }
+        }
+     }
   };
 
   const handleNoteSubmit = (note: string, location?: string) => {
@@ -454,6 +496,12 @@ export const App: React.FC = () => {
     setOpponentScore(prev => Math.max(0, prev + delta));
   };
   
+  // Wrapper for Home Score Manual Adjustment
+  const handleHomeScoreChange = (delta: number) => {
+    if (!checkTimerActive()) return;
+    setHomeScoreAdjustment(prev => prev + delta);
+  };
+
   // Wrappers for Set Counter with Timer Guard
   const handleSetIncrement = () => {
     if (!checkTimerActive()) return;
@@ -492,7 +540,9 @@ export const App: React.FC = () => {
                       ...p,
                       cardStatus: 'none',
                       sinBinStartTime: undefined,
-                      isOnField: true // Restore to field
+                      isOnField: true, // Restore to field
+                      // Set start time for Played Time calculation
+                      lastSubTime: matchTime
                   };
               }
               return p;
@@ -507,11 +557,18 @@ export const App: React.FC = () => {
       setPlayers(prev => {
           const updated = prev.map(p => {
               if (p.id === playerId) {
+                  // Calculate time accumulated until this card
+                  const sessionTime = p.lastSubTime !== undefined ? matchTime - p.lastSubTime : 0;
+                  const newTotalTime = p.totalSecondsOnField + sessionTime;
+
                   return { 
                       ...p, 
                       cardStatus: cardType || 'none',
                       isOnField: false, // Sent off/Bin -> Off field
-                      sinBinStartTime: cardType === 'yellow' ? matchTime : undefined // Track time for Yellow
+                      sinBinStartTime: cardType === 'yellow' ? matchTime : undefined, // Track time for Yellow
+                      // Update Played Time
+                      totalSecondsOnField: newTotalTime,
+                      lastSubTime: undefined
                   };
               }
               return p;
@@ -539,8 +596,49 @@ export const App: React.FC = () => {
   
   const handleToggleFieldStatus = (playerId: string) => {
       if (!checkTimerActive()) return;
+      
+      const player = players.find(p => p.id === playerId);
+      if (player) {
+          const action = player.isOnField ? 'Subbed Off' : 'Subbed On';
+          setGameLog(prev => [...prev, {
+              id: Date.now().toString(),
+              timestamp: matchTime,
+              formattedTime: formatTime(matchTime),
+              playerId: player.id,
+              playerName: player.name,
+              playerNumber: player.number,
+              type: 'substitution',
+              reason: action,
+              period
+          }]);
+      }
+
       setPlayers(prev => {
-          const updated = prev.map(p => p.id === playerId ? { ...p, isOnField: !p.isOnField } : p);
+          const updated = prev.map(p => {
+              if (p.id === playerId) {
+                 const newStatus = !p.isOnField;
+                 let newTotalTime = p.totalSecondsOnField;
+                 let newLastSubTime = p.lastSubTime;
+
+                 if (newStatus) {
+                    // Subbing ON: Start tracking from now
+                    newLastSubTime = matchTime;
+                 } else {
+                    // Subbing OFF: Add accumulated time
+                    const sessionTime = p.lastSubTime !== undefined ? matchTime - p.lastSubTime : 0;
+                    newTotalTime += sessionTime;
+                    newLastSubTime = undefined;
+                 }
+
+                 return { 
+                    ...p, 
+                    isOnField: newStatus,
+                    totalSecondsOnField: newTotalTime,
+                    lastSubTime: newLastSubTime
+                 };
+              }
+              return p;
+          });
           return sortPlayers(updated);
       });
   };
@@ -556,7 +654,7 @@ export const App: React.FC = () => {
      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const teamScore = players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0);
+  const teamScore = Math.max(0, players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0) + homeScoreAdjustment);
   
   const teamTotals: PlayerStats = { ...INITIAL_STATS };
   const maxValues: PlayerStats = { ...INITIAL_STATS };
@@ -615,61 +713,86 @@ export const App: React.FC = () => {
         />
       ) : (
          /* MATCH TRACKER VIEW */
-         <div className="min-h-screen bg-gray-100 dark:bg-[#0F0F10] flex flex-col font-sans">
-            {/* Header */}
-            <header className="bg-white dark:bg-[#1A1A1C] border-b border-gray-200 dark:border-white/5 sticky top-0 z-20 shadow-sm">
+         <div className="h-screen overflow-hidden bg-gray-100 dark:bg-[#0F0F10] flex flex-col font-sans">
+            {/* Header - No longer sticky, acts as top bar */}
+            <header className="bg-white dark:bg-[#1A1A1C] border-b border-gray-200 dark:border-white/5 shadow-sm shrink-0">
                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
                   
                   {/* BUNDLE 1: TIMER & PERIOD */}
-                  <div className="bg-gray-50 dark:bg-white/5 rounded-2xl px-6 py-3 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center min-w-[160px] shadow-sm">
-                     {/* Timer */}
-                     <div className="flex items-center space-x-3">
-                         <button 
-                           onClick={() => setIsTimerRunning(!isTimerRunning)}
-                           className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isTimerRunning ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600 animate-pulse'}`}
-                         >
-                            {isTimerRunning ? (
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            )}
-                         </button>
-                         <span className="text-3xl font-mono font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">
-                            {formatTime(matchTime)}
-                         </span>
+                  <div 
+                    onClick={() => setIsTimerRunning(!isTimerRunning)}
+                    className="bg-white dark:bg-[#1A1A1C] rounded-2xl px-5 py-2 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center min-w-[160px] shadow-sm cursor-pointer hover:border-blue-200 dark:hover:border-blue-900/50 transition-all group select-none"
+                  >
+                     <div className="flex items-center gap-3">
+                        {/* Status Dot */}
+                        <div className="relative flex h-3 w-3 mt-1">
+                          {isTimerRunning && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                          <span className={`relative inline-flex rounded-full h-3 w-3 transition-colors duration-300 ${isTimerRunning ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></span>
+                        </div>
+
+                        {/* Time */}
+                        <span className={`text-4xl font-heading font-medium tabular-nums tracking-tight leading-none transition-colors ${isTimerRunning ? 'text-slate-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>
+                           {formatTime(matchTime)}
+                        </span>
                      </div>
+                     
                      {/* Period */}
-                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] ml-5">
                        {period} Half
                      </span>
                   </div>
 
                   {/* BUNDLE 2: SCORES & SETS */}
-                  <div className="flex-1 bg-gray-50 dark:bg-white/5 rounded-2xl px-4 py-3 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center shadow-sm relative">
+                  <div className="flex-1 bg-gray-50 dark:bg-white/5 rounded-2xl px-4 py-3 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
                      
                      {/* Row 1: Scoreboard */}
-                     <div className="flex items-center justify-center space-x-6 sm:space-x-12 w-full mb-3">
-                         {/* Team Name & Score */}
-                         <div className="flex items-center space-x-4">
-                            <span className="text-right text-sm font-bold text-gray-500 uppercase tracking-wider truncate max-w-[120px]">
+                     <div className="flex items-center justify-center w-full mb-3 px-2">
+                         
+                         {/* HOME SIDE */}
+                         <div className="flex-1 flex items-center justify-end min-w-0">
+                            {/* Team Name */}
+                            <span className="text-right text-sm font-bold text-gray-500 uppercase tracking-wider truncate flex-1 min-w-0 h-6 flex items-center justify-end">
                                 {localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'Team'}
                             </span>
-                            <span className="text-4xl font-heading font-black text-blue-600 dark:text-blue-400 tabular-nums leading-none">
-                                {teamScore}
-                            </span>
+                            
+                            {/* Score Block - Fixed Width for Symmetry */}
+                            <div className="relative w-32 flex items-center justify-center shrink-0 mx-2">
+                                {/* Minus Button */}
+                                <button 
+                                  onClick={() => handleHomeScoreChange(-1)} 
+                                  disabled={!isTimerRunning}
+                                  className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1"
+                                >
+                                  －
+                                </button>
+                                
+                                <span className="text-4xl font-heading font-black text-blue-600 dark:text-blue-400 tabular-nums leading-none">
+                                    {teamScore}
+                                </span>
+                                
+                                {/* Plus Button */}
+                                <button 
+                                  onClick={() => handleHomeScoreChange(1)} 
+                                  disabled={!isTimerRunning}
+                                  className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1"
+                                >
+                                  ＋
+                                </button>
+                            </div>
                          </div>
 
-                         {/* Dash */}
-                         <span className="text-gray-300 dark:text-gray-600 text-2xl font-light">|</span>
+                         {/* Divider */}
+                         <div className="w-px h-8 bg-gray-200 dark:bg-white/10 mx-2 shrink-0"></div>
 
-                         {/* Opponent Score & Name */}
-                         <div className="flex items-center space-x-4 relative group">
-                            <div className="relative">
+                         {/* OPPONENT SIDE */}
+                         <div className="flex-1 flex items-center justify-start min-w-0">
+                            {/* Score Block - Fixed Width for Symmetry */}
+                            <div className="relative w-32 flex items-center justify-center shrink-0 mx-2">
                                 {/* Minus Button */}
                                 <button 
                                   onClick={() => handleOpponentScoreChange(-1)} 
                                   disabled={!isTimerRunning}
-                                  className="absolute right-full mr-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0 disabled:cursor-not-allowed"
+                                  className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1"
                                 >
                                   －
                                 </button>
@@ -682,23 +805,26 @@ export const App: React.FC = () => {
                                 <button 
                                   onClick={() => handleOpponentScoreChange(1)} 
                                   disabled={!isTimerRunning}
-                                  className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0 disabled:cursor-not-allowed"
+                                  className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1"
                                 >
                                   ＋
                                 </button>
                             </div>
 
-                            <input 
-                                value={opponentName} 
-                                onChange={(e) => setOpponentName(e.target.value)}
-                                className="text-left text-sm font-bold text-gray-500 uppercase tracking-wider bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none transition-all placeholder-gray-300 w-[120px]" 
-                                placeholder="OPPONENT"
-                            />
-                            
-                            {/* T/K Buttons */}
-                            <div className={`absolute left-full pl-4 flex flex-col space-y-1 transition-opacity ${!isTimerRunning ? 'opacity-40 pointer-events-none' : ''}`}>
-                                <button onClick={() => handleOpponentScoreChange(4)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-bold rounded hover:bg-blue-200 disabled:cursor-not-allowed">T</button>
-                                <button onClick={() => handleOpponentScoreChange(2)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded hover:bg-slate-300 disabled:cursor-not-allowed">K</button>
+                            {/* Opponent Name & Extras */}
+                            <div className="flex-1 flex items-center min-w-0 gap-3">
+                                <input 
+                                    value={opponentName} 
+                                    onChange={(e) => setOpponentName(e.target.value)}
+                                    className="text-left text-sm font-bold text-gray-500 uppercase tracking-wider bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none transition-all placeholder-gray-300 w-full min-w-0 h-6" 
+                                    placeholder="OPPONENT"
+                                />
+                                
+                                {/* T/K Buttons */}
+                                <div className={`flex flex-col space-y-1 transition-opacity shrink-0 ${!isTimerRunning ? 'opacity-40 pointer-events-none' : ''}`}>
+                                    <button onClick={() => handleOpponentScoreChange(4)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-bold rounded hover:bg-blue-200 disabled:cursor-not-allowed w-5 flex items-center justify-center">T</button>
+                                    <button onClick={() => handleOpponentScoreChange(2)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded hover:bg-slate-300 disabled:cursor-not-allowed w-5 flex items-center justify-center">K</button>
+                                </div>
                             </div>
                          </div>
                      </div>
@@ -735,22 +861,22 @@ export const App: React.FC = () => {
 
                   {/* BUNDLE 3: ACTIONS */}
                   <div className="bg-gray-50 dark:bg-white/5 rounded-2xl px-4 py-3 border border-gray-200 dark:border-white/10 flex items-center space-x-3 shadow-sm min-h-[88px]">
-                     <Button variant="secondary" onClick={() => setCurrentScreen('dashboard')} className="h-10 text-xs bg-white dark:bg-white/10 border border-gray-200 dark:border-white/5 shadow-sm">
-                        Back
-                     </Button>
                      <Button 
                         onClick={() => period === '1st' ? setIsEndHalfModalOpen(true) : setIsEndMatchModalOpen(true)}
                         className="h-10 text-xs bg-red-600 hover:bg-red-700 text-white shadow-red-500/20 shadow-lg border-none"
                      >
                         {period === '1st' ? 'End 1st Half' : 'End Match'}
                      </Button>
+                     <Button variant="secondary" onClick={() => setCurrentScreen('dashboard')} className="h-10 text-xs bg-white dark:bg-white/10 border border-gray-200 dark:border-white/5 shadow-sm">
+                        Back
+                     </Button>
                   </div>
                </div>
             </header>
 
-            {/* Timer Paused Banner */}
+            {/* Timer Paused Banner - No longer sticky */}
             {!isTimerRunning && (
-              <div className="bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800/50 px-4 py-2 text-center sticky top-[113px] z-10 backdrop-blur-sm">
+              <div className="bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800/50 px-4 py-2 text-center z-10 backdrop-blur-sm shrink-0">
                  <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide flex items-center justify-center gap-2">
                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -760,16 +886,22 @@ export const App: React.FC = () => {
               </div>
             )}
 
-            {/* Players List */}
-            <main className="flex-1 overflow-x-auto p-4 md:p-6 pb-24">
-              <div className="min-w-[1000px] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-apple dark:shadow-none border border-gray-200 dark:border-white/5 overflow-hidden">
+            {/* Players List - Scrollable Main Container 
+                UPDATED: padding-top removed (pt-0) so sticky headers hit the very top.
+                Vertical padding moved to margins/bottom to avoid gaps above sticky headers.
+            */}
+            <main className="flex-1 overflow-auto px-4 md:px-6 pb-4 md:pb-6 pt-0 relative">
+              {/* UPDATED: Added top margin to container to provide visual spacing initially, 
+                  but allowing sticky header to slide up to the top edge when scrolling. */}
+              <div className="min-w-[1000px] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-apple dark:shadow-none border border-gray-200 dark:border-white/5 mt-4 md:mt-6">
                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/5">
+                    <thead className="border-b border-gray-200 dark:border-white/5">
                        <tr>
-                          <th className="p-3 text-left w-16 sticky left-0 z-20 bg-gray-50 dark:bg-[#1A1A1C] backdrop-blur text-xs font-bold text-gray-500 uppercase tracking-wider pl-4">#</th>
-                          <th className="p-3 text-left min-w-[160px] sticky left-[64px] z-20 bg-gray-50 dark:bg-[#1A1A1C] backdrop-blur text-xs font-bold text-gray-500 uppercase tracking-wider">Player</th>
+                          {/* UPDATED: Removed backdrop-blur and transparency. Made backgrounds solid to hide content scrolling behind. */}
+                          <th className="p-3 text-left w-16 sticky left-0 top-0 z-50 bg-gray-50 dark:bg-[#1A1A1C] text-xs font-bold text-gray-500 uppercase tracking-wider pl-4">#</th>
+                          <th className="p-3 text-left min-w-[160px] sticky left-[64px] top-0 z-50 bg-gray-50 dark:bg-[#1A1A1C] text-xs font-bold text-gray-500 uppercase tracking-wider">Player</th>
                           {Object.values(STAT_CONFIGS).map(cfg => (
-                             <th key={cfg.key} className="p-3 text-center min-w-[130px] text-xs font-bold text-gray-500 uppercase tracking-wider">{cfg.label}</th>
+                             <th key={cfg.key} className="p-3 text-center min-w-[130px] text-xs font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-40 bg-gray-50 dark:bg-[#1A1A1C]">{cfg.label}</th>
                           ))}
                        </tr>
                     </thead>
@@ -795,10 +927,15 @@ export const App: React.FC = () => {
                     </tbody>
                  </table>
               </div>
+
+              {/* Match Event Log Dropdown */}
+              <div className="max-w-4xl mx-auto">
+                <MatchEventLog events={gameLog} />
+              </div>
             </main>
 
-            {/* Static Action Bar for Cards */}
-            <div className="sticky bottom-0 bg-white dark:bg-[#1A1A1C] border-t border-gray-200 dark:border-white/5 p-4 z-30 pb-safe">
+            {/* Static Action Bar for Cards - No longer sticky to body, sits at bottom of flex */}
+            <div className="bg-white dark:bg-[#1A1A1C] border-t border-gray-200 dark:border-white/5 p-4 z-30 pb-safe shrink-0">
               <div className="max-w-4xl mx-auto flex items-center justify-center space-x-4">
                 <Button 
                   onClick={() => handleCardAction('', 'yellow')}
@@ -846,14 +983,27 @@ export const App: React.FC = () => {
          message="This will finalize all stats and save the game to history."
          onConfirm={async () => {
              if (user) {
-                 // Prepare data
+                 // Finalize time on field for players currently ON
+                 const finalizedPlayers = players.map(p => {
+                     if (p.isOnField && p.lastSubTime !== undefined) {
+                         const sessionTime = matchTime - p.lastSubTime;
+                         return { 
+                             ...p, 
+                             totalSecondsOnField: p.totalSecondsOnField + sessionTime 
+                         };
+                     }
+                     return p;
+                 });
+                 
+                 // Use these updated players for saving
                  const rawData = {
-                     players,
+                     players: finalizedPlayers,
                      gameLog,
                      matchTime,
                      setsCompleted,
                      totalSets,
-                     fullMatchStats: players.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {})
+                     homeScoreAdjustment,
+                     fullMatchStats: finalizedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {})
                  };
                  
                  // Sanitize undefined values (Firestore doesn't accept undefined)
@@ -935,7 +1085,8 @@ export const App: React.FC = () => {
                   possessionSeconds: (viewingMatch.data.matchTime || 0) * 0.5, 
                   matchTime: viewingMatch.data.matchTime || 0,
                   teamName: viewingMatch.teamName,
-                  opponentName: viewingMatch.opponentName
+                  opponentName: viewingMatch.opponentName,
+                  gameLog: viewingMatch.data.gameLog || []
                }} />
             </div>
          </div>
