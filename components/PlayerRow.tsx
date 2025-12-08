@@ -8,6 +8,7 @@ interface PlayerRowProps {
   onStatChange: (id: string, key: StatKey, delta: number) => void;
   onIdentityChange: (id: string, field: 'name' | 'number', value: string) => void;
   onCardAction: (id: string, type: 'yellow' | 'red') => void;
+  onRemoveCard: (id: string) => void;
   onToggleFieldStatus: (id: string) => void;
   isOdd: boolean;
   teamTotals: PlayerStats;
@@ -21,6 +22,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   onStatChange,
   onIdentityChange,
   onCardAction,
+  onRemoveCard,
   onToggleFieldStatus,
   isOdd,
   teamTotals,
@@ -43,26 +45,26 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     rowClass = 'bg-yellow-50 dark:bg-yellow-900/10';
     nameBadge = (
       <button 
-        onClick={() => !isReadOnly && onCardAction(player.id, 'yellow')}
+        onClick={() => !isReadOnly && onRemoveCard(player.id)}
         disabled={isReadOnly}
-        className="ml-2 text-[10px] font-bold bg-yellow-400 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 px-1.5 py-0.5 rounded uppercase hover:bg-yellow-500 transition-colors cursor-pointer shadow-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Click to end Sin Bin"
+        className="ml-2 text-[10px] font-bold bg-yellow-400 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 px-1.5 py-0.5 rounded uppercase hover:bg-yellow-500 transition-colors cursor-pointer shadow-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed group"
+        title="Click to remove Sin Bin status"
       >
         Sin Bin
-        <span className="ml-1 text-[8px] opacity-70">✕</span>
+        <span className="ml-1 text-[8px] opacity-70 group-hover:opacity-100 bg-black/10 rounded-full w-3 h-3 flex items-center justify-center">✕</span>
       </button>
     );
   } else if (player.cardStatus === 'red') {
     rowClass = 'bg-red-50 dark:bg-red-900/10';
     nameBadge = (
       <button 
-        onClick={() => !isReadOnly && onCardAction(player.id, 'red')}
+        onClick={() => !isReadOnly && onRemoveCard(player.id)}
         disabled={isReadOnly}
-        className="ml-2 text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded uppercase hover:bg-red-700 transition-colors cursor-pointer shadow-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Click to rescind Red Card"
+        className="ml-2 text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded uppercase hover:bg-red-700 transition-colors cursor-pointer shadow-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed group"
+        title="Click to remove Red Card status"
       >
         Sent Off
-        <span className="ml-1 text-[8px] opacity-70">✕</span>
+        <span className="ml-1 text-[8px] opacity-70 group-hover:opacity-100 bg-black/10 rounded-full w-3 h-3 flex items-center justify-center">✕</span>
       </button>
     );
   }

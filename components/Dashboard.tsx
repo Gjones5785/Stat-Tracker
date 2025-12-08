@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { MatchHistoryItem, SquadPlayer, TrainingSession } from '../types';
 import { SquadStatsView } from './SquadStatsView';
 import { TrainingView } from './TrainingView';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface DashboardProps {
   currentUser: string;
@@ -60,6 +61,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Team Name State
   const [clubName, setClubName] = useState('');
 
+  // Delete Confirmation State
+  const [deleteMatchId, setDeleteMatchId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('RUGBY_TRACKER_LOGO');
     if (saved) {
@@ -81,6 +86,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleDismissGuide = () => {
     setIsGuideDismissed(true);
     localStorage.setItem('RL_TRACKER_GUIDE_DISMISSED', 'true');
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeleteMatchId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteMatchId) {
+      try {
+        await onDeleteMatch(deleteMatchId);
+      } catch (error) {
+        console.error("Failed to delete match:", error);
+      }
+      setDeleteMatchId(null);
+      setIsDeleteModalOpen(false);
+    }
   };
 
   return (
@@ -360,11 +384,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <div className="flex items-center space-x-2 pl-4 border-l border-gray-100 dark:border-white/5">
                         <Button variant="secondary" onClick={() => onViewMatch(match)} className="text-xs px-4 py-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 border-none font-semibold">View</Button>
                         <button 
-                          onClick={() => onDeleteMatch(match.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                          type="button"
+                          onClick={(e) => handleDeleteClick(e, match.id)}
+                          className="relative z-20 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                           title="Delete Match"
+                          aria-label="Delete Match"
                         >
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
@@ -400,6 +426,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
 
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+         isOpen={isDeleteModalOpen}
+         title="Delete Match Record?"
+         message="Are you sure you want to delete this match record? This will permanently remove the match and all associated player statistics from the career totals. This action cannot be undone."
+         onConfirm={confirmDelete}
+         onCancel={() => {
+            setDeleteMatchId(null);
+            setIsDeleteModalOpen(false);
+         }}
+      />
     </div>
   );
 };
