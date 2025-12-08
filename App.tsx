@@ -10,7 +10,7 @@ import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { TeamSelectionModal } from './components/TeamSelectionModal';
 import { CardAssignmentModal } from './components/CardAssignmentModal';
-import { Player, StatKey, PlayerStats, GameLogEntry, MatchHistoryItem, SquadPlayer } from './types';
+import { Player, StatKey, PlayerStats, GameLogEntry, MatchHistoryItem, SquadPlayer, TrainingSession } from './types';
 import { STAT_CONFIGS, createInitialPlayers, INITIAL_STATS } from './constants';
 import { MatchCharts } from './components/MatchCharts';
 
@@ -43,6 +43,9 @@ const App: React.FC = () => {
 
   // --- SQUAD STATE ---
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
+
+  // --- TRAINING STATE ---
+  const [trainingHistory, setTrainingHistory] = useState<TrainingSession[]>([]);
 
   // --- APP STATE ---
   const [players, setPlayers] = useState<Player[]>(createInitialPlayers);
@@ -105,6 +108,7 @@ const App: React.FC = () => {
     if (!currentUser) {
       setMatchHistory([]);
       setSquad([]);
+      setTrainingHistory([]);
       setHasActiveMatch(false);
       return;
     }
@@ -129,6 +133,17 @@ const App: React.FC = () => {
       }
     } catch (e) {
       console.error("Failed to load squad", e);
+    }
+
+    // Load Training
+    try {
+      const trainingKey = `RUGBY_TRACKER_TRAINING_${currentUser}`;
+      const savedTraining = localStorage.getItem(trainingKey);
+      if (savedTraining) {
+        setTrainingHistory(JSON.parse(savedTraining));
+      }
+    } catch (e) {
+      console.error("Failed to load training history", e);
     }
 
     // Check Active Match
@@ -282,6 +297,25 @@ const App: React.FC = () => {
     const newSquad = squad.filter(p => p.id !== id);
     setSquad(newSquad);
     localStorage.setItem(`RUGBY_TRACKER_SQUAD_${currentUser}`, JSON.stringify(newSquad));
+  };
+
+  // --- TRAINING HANDLERS ---
+  const handleSaveTrainingSession = (session: Omit<TrainingSession, 'id'>) => {
+    if (!currentUser) return;
+    const newSession: TrainingSession = {
+      id: Date.now().toString(),
+      ...session
+    };
+    const newHistory = [newSession, ...trainingHistory];
+    setTrainingHistory(newHistory);
+    localStorage.setItem(`RUGBY_TRACKER_TRAINING_${currentUser}`, JSON.stringify(newHistory));
+  };
+
+  const handleDeleteTrainingSession = (id: string) => {
+    if (!currentUser) return;
+    const newHistory = trainingHistory.filter(s => s.id !== id);
+    setTrainingHistory(newHistory);
+    localStorage.setItem(`RUGBY_TRACKER_TRAINING_${currentUser}`, JSON.stringify(newHistory));
   };
 
 
@@ -870,6 +904,9 @@ const App: React.FC = () => {
           onRemoveSquadPlayer={handleRemoveSquadPlayer}
           darkMode={darkMode}
           toggleTheme={toggleTheme}
+          trainingHistory={trainingHistory}
+          onSaveTrainingSession={handleSaveTrainingSession}
+          onDeleteTrainingSession={handleDeleteTrainingSession}
         />
       ) : (
         <div className="flex flex-col h-screen bg-[#F5F5F7] dark:bg-[#0F0F10] overflow-hidden font-sans transition-colors duration-300">

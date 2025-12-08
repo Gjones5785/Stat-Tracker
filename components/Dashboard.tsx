@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { MatchHistoryItem, SquadPlayer } from '../types';
+import { MatchHistoryItem, SquadPlayer, TrainingSession } from '../types';
 import { SquadStatsView } from './SquadStatsView';
+import { TrainingView } from './TrainingView';
 
 interface DashboardProps {
   currentUser: string;
@@ -19,6 +20,10 @@ interface DashboardProps {
   onRemoveSquadPlayer: (id: string) => void;
   darkMode: boolean;
   toggleTheme: () => void;
+  // Training Props
+  trainingHistory?: TrainingSession[];
+  onSaveTrainingSession?: (session: Omit<TrainingSession, 'id'>) => void;
+  onDeleteTrainingSession?: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -35,9 +40,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onAddSquadPlayer,
   onRemoveSquadPlayer,
   darkMode,
-  toggleTheme
+  toggleTheme,
+  trainingHistory = [],
+  onSaveTrainingSession = () => {},
+  onDeleteTrainingSession = () => {}
 }) => {
-  const [currentTab, setCurrentTab] = useState<'matches' | 'squad'>('matches');
+  const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training'>('matches');
   const [showGuide, setShowGuide] = useState(false);
   const [isGuideDismissed, setIsGuideDismissed] = useState(() => {
     return localStorage.getItem('RL_TRACKER_GUIDE_DISMISSED') === 'true';
@@ -136,7 +144,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="bg-gray-200/50 dark:bg-white/5 p-1 rounded-full inline-flex relative">
             <button 
               onClick={() => setCurrentTab('matches')}
-              className={`relative z-10 px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 ${
+              className={`relative z-10 px-6 sm:px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 ${
                 currentTab === 'matches' 
                   ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
                   : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'
@@ -146,7 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </button>
             <button 
               onClick={() => setCurrentTab('squad')}
-              className={`relative z-10 px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 ${
+              className={`relative z-10 px-6 sm:px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 ${
                 currentTab === 'squad' 
                   ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
                   : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'
@@ -154,10 +162,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
               Squad & Stats
             </button>
+            <button 
+              onClick={() => setCurrentTab('training')}
+              className={`relative z-10 px-6 sm:px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 ${
+                currentTab === 'training' 
+                  ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
+                  : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'
+              }`}
+            >
+              Training
+            </button>
           </div>
         </div>
 
-        {currentTab === 'matches' ? (
+        {currentTab === 'matches' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Hero Actions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -353,7 +371,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               )}
             </div>
           </div>
-        ) : (
+        )}
+
+        {currentTab === 'squad' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <SquadStatsView 
                 squad={squad} 
@@ -362,6 +382,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onRemovePlayer={onRemoveSquadPlayer}
             />
           </div>
+        )}
+
+        {currentTab === 'training' && (
+          <TrainingView 
+             squad={squad}
+             history={trainingHistory}
+             onSaveSession={onSaveTrainingSession}
+             onDeleteSession={onDeleteTrainingSession}
+             onAddSquadPlayer={onAddSquadPlayer}
+          />
         )}
 
       </main>

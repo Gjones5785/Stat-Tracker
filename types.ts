@@ -1,5 +1,4 @@
 
-
 export interface PlayerIdentity {
   name: string;
   number: string;
@@ -38,6 +37,16 @@ export interface SquadPlayer {
   name: string;
   position?: string;
   createdAt: number;
+}
+
+export type TrainingType = 'Pitch' | 'Gym' | 'Other';
+
+export interface TrainingSession {
+  id: string;
+  date: string;
+  type: TrainingType;
+  attendeeIds: string[]; // List of squad IDs
+  notes?: string;
 }
 
 export interface GameLogEntry {
