@@ -1,29 +1,37 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
+import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthScreenProps {
-  onLogin: (username: string) => void;
+  onLogin: (user: any) => void;
 }
 
+type AuthMode = 'signin' | 'signup' | 'reset';
+
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(''); // New state for username
+  
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  // Local state for branding preview (before login)
   const [customLogo, setCustomLogo] = useState<string | null>(null);
   const [defaultLogoFailed, setDefaultLogoFailed] = useState(false);
   const [clubName, setClubName] = useState('');
 
+  // We still try to read local branding for the login screen aesthetics
   useEffect(() => {
     const savedLogo = localStorage.getItem('RUGBY_TRACKER_LOGO');
-    if (savedLogo) {
-      setCustomLogo(savedLogo);
-    }
+    if (savedLogo) setCustomLogo(savedLogo);
     const savedClubName = localStorage.getItem('RUGBY_TRACKER_CLUB_NAME');
-    if (savedClubName) {
-      setClubName(savedClubName);
-    }
+    if (savedClubName) setClubName(savedClubName);
   }, []);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +41,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       reader.onloadend = () => {
         const result = reader.result as string;
         setCustomLogo(result);
+        // Temporarily save locally so it persists if they refresh before logging in
         localStorage.setItem('RUGBY_TRACKER_LOGO', result);
         setDefaultLogoFailed(false);
       };
@@ -46,44 +55,118 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', val);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
+    setLoading(true);
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password.');
-      return;
-    }
+    try {
+      if (authMode === 'reset') {
+        // --- PASSWORD RESET FLOW ---
+        if (!email.trim()) {
+          throw new Error('Please enter your email address.');
+        }
+        await sendPasswordResetEmail(auth, email);
+        setSuccessMessage('Password reset link sent! Please check your email inbox.');
+        setLoading(false);
+        return; // Stop here, don't try to login
+      }
 
-    const usersStr = localStorage.getItem('RUGBY_TRACKER_USERS');
-    const users = usersStr ? JSON.parse(usersStr) : {};
+      // --- LOGIN / SIGNUP FLOW ---
+      if (!email.trim() || !password.trim()) {
+        throw new Error('Please enter both email and password.');
+      }
 
-    if (isLogin) {
-      if (users[username] === password) {
-        onLogin(username);
+      let userCredential;
+      if (authMode === 'signin') {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       } else {
-        setError('Invalid username or password.');
-      }
-    } else {
-      if (users[username]) {
-        setError('Username already exists. Please try another.');
-        return;
-      }
-      users[username] = password;
-      localStorage.setItem('RUGBY_TRACKER_USERS', JSON.stringify(users));
-      onLogin(username);
-    }
-  };
+        // --- SIGN UP ---
+        if (!username.trim()) {
+          throw new Error('Please enter a username.');
+        }
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setError('');
-    setUsername('');
-    setPassword('');
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // If creating a new user, save their initial profile settings (Logo/Club Name/Username) to Firestore
+        if (userCredential.user) {
+          // Update Auth Profile
+          await updateProfile(userCredential.user, {
+            displayName: username
+          });
+
+          // Save to Database
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+             username: username,
+             clubName: clubName,
+             logo: customLogo
+          }, { merge: true });
+        }
+      }
+      // App.tsx auth listener will handle the transition
+    } catch (err: any) {
+      // Only log unexpected system errors.
+      const isExpectedAuthError = 
+        err.code === 'auth/invalid-credential' || 
+        err.code === 'auth/wrong-password' || 
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/email-already-in-use';
+
+      if (!isExpectedAuthError && !err.message.includes('Please enter')) {
+        console.error("Auth Error:", err);
+      }
+
+      let msg = 'Authentication failed.';
+      
+      // -- Custom Error Mapping --
+      if (err.message.includes('Please enter')) {
+        msg = err.message;
+      } 
+      // Handle Reset Password Specific Errors
+      else if (authMode === 'reset' && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email')) {
+        msg = 'No account found with this email address.';
+      }
+      // Handle Login Specific Errors
+      else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        msg = 'Invalid email or password. Please check your credentials.';
+      } 
+      // Other Common Errors
+      else if (err.code === 'auth/email-already-in-use') {
+        msg = 'Email already registered. Try signing in.';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'Password should be at least 6 characters.';
+      } else if (err.code === 'auth/invalid-email') {
+        msg = 'Invalid email address format.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password login is not enabled in Firebase Console.';
+      } else if (err.code === 'auth/too-many-requests') {
+        msg = 'Too many failed attempts. Please try again later.';
+      }
+      
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const activeLogoSrc = customLogo || 'logo.png';
   const showImage = !!customLogo || !defaultLogoFailed;
+
+  // Helper text based on mode
+  let title = 'Welcome back';
+  let subtitle = 'Enter your credentials to access the statistics dashboard.';
+  let buttonText = 'Sign In';
+
+  if (authMode === 'signup') {
+    title = 'Create profile';
+    subtitle = 'Join the platform to start tracking your team.';
+    buttonText = 'Create Profile';
+  } else if (authMode === 'reset') {
+    title = 'Reset Password';
+    subtitle = 'Enter your email to receive a password reset link.';
+    buttonText = 'Send Reset Link';
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans">
@@ -170,74 +253,139 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           
           <div className="mb-12">
             <h2 className="text-4xl font-heading font-bold text-slate-900 tracking-tight mb-2">
-              {isLogin ? 'Welcome back' : 'Create profile'}
+              {title}
             </h2>
             <p className="text-base text-slate-500 font-medium">
-              {isLogin 
-                ? 'Enter your credentials to access the statistics dashboard.' 
-                : 'Join the platform to start tracking your team.'}
+              {subtitle}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-5">
+              
+              {/* USERNAME FIELD (Signup Only) */}
+              {authMode === 'signup' && (
+                <div>
+                  <label htmlFor="username" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="block w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium placeholder-gray-300 shadow-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all"
+                    placeholder="Coach Smith"
+                  />
+                </div>
+              )}
+
               <div>
-                <label htmlFor="username" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1">
-                  Username
+                <label htmlFor="email" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1">
+                  Email Address
                 </label>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="block w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium placeholder-gray-300 shadow-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all"
-                  placeholder="e.g. coach_smith"
+                  placeholder="coach@club.com"
                 />
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium placeholder-gray-300 shadow-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
+              {authMode !== 'reset' && (
+                <div>
+                  <div className="flex justify-between items-center mb-2.5 ml-1">
+                    <label htmlFor="password" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400">
+                      Password
+                    </label>
+                    {authMode === 'signin' && (
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('reset');
+                          setError('');
+                          setSuccessMessage('');
+                        }}
+                        className="text-xs font-bold text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        Forgot Password?
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium placeholder-gray-300 shadow-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+              )}
             </div>
 
             {error && (
-              <div className="rounded-xl bg-red-50 p-4 text-center">
+              <div className="rounded-xl bg-red-50 p-4 text-center border border-red-100 animate-in fade-in slide-in-from-top-2">
                 <span className="text-sm text-red-600 font-medium">{error}</span>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="rounded-xl bg-green-50 p-4 text-center border border-green-100 animate-in fade-in slide-in-from-top-2">
+                <span className="text-sm text-green-700 font-medium">{successMessage}</span>
               </div>
             )}
 
             <Button 
               type="submit" 
-              className="w-full py-4 bg-[#E02020] hover:bg-red-700 text-white font-heading font-bold rounded-2xl shadow-[0_10px_30px_rgba(224,32,32,0.2)] hover:shadow-[0_15px_35px_rgba(224,32,32,0.3)] transition-all transform active:scale-[0.99] text-lg tracking-wide mt-4"
+              disabled={loading}
+              className="w-full py-4 bg-[#E02020] hover:bg-red-700 text-white font-heading font-bold rounded-2xl shadow-[0_10px_30px_rgba(224,32,32,0.2)] hover:shadow-[0_15px_35px_rgba(224,32,32,0.3)] transition-all transform active:scale-[0.99] text-lg tracking-wide mt-4 disabled:opacity-70 disabled:cursor-wait"
             >
-              {isLogin ? 'Sign In' : 'Create Profile'}
+              {loading ? 'Processing...' : buttonText}
             </Button>
           </form>
 
           <div className="mt-10 text-center">
-            <p className="text-sm text-slate-400 font-medium">
-              {isLogin ? "New to the platform?" : "Already have an account?"}
+            {authMode === 'signin' && (
+              <p className="text-sm text-slate-400 font-medium">
+                New to the platform?
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signup'); setError(''); setSuccessMessage(''); }}
+                  className="ml-2 font-bold text-slate-900 hover:text-red-600 transition-colors"
+                >
+                  Create profile
+                </button>
+              </p>
+            )}
+            
+            {authMode === 'signup' && (
+              <p className="text-sm text-slate-400 font-medium">
+                Already have an account?
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signin'); setError(''); setSuccessMessage(''); }}
+                  className="ml-2 font-bold text-slate-900 hover:text-red-600 transition-colors"
+                >
+                  Sign in
+                </button>
+              </p>
+            )}
+
+            {authMode === 'reset' && (
               <button
-                onClick={toggleMode}
-                className="ml-2 font-bold text-slate-900 hover:text-red-600 transition-colors"
+                type="button"
+                onClick={() => { setAuthMode('signin'); setError(''); setSuccessMessage(''); }}
+                className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
               >
-                {isLogin ? 'Create profile' : 'Sign in'}
+                ← Back to Sign In
               </button>
-            </p>
+            )}
           </div>
         </div>
       </div>

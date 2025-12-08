@@ -92,7 +92,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                      {jersey}
                    </div>
                    <select
-                     className="flex-1 p-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full min-w-0 text-gray-900"
+                     className="flex-1 p-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full min-w-0 text-gray-900 dark:text-white"
                      value={selectedId}
                      onChange={(e) => handleSelect(jersey, e.target.value)}
                    >
