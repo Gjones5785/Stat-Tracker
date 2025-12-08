@@ -9,16 +9,20 @@ interface SquadStatsViewProps {
   history: MatchHistoryItem[];
   onAddPlayer: (player: Omit<SquadPlayer, 'id' | 'createdAt'>) => void;
   onRemovePlayer: (id: string) => void;
+  onUpdatePlayer: (id: string, updates: Partial<SquadPlayer>) => void;
 }
 
 export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
   squad,
   history,
   onAddPlayer,
-  onRemovePlayer
+  onRemovePlayer,
+  onUpdatePlayer
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'stats'>('roster');
-  const [isSorted, setIsSorted] = useState(false);
+  
+  // Sort State for Roster Tab
+  const [rosterSort, setRosterSort] = useState<{ key: 'name' | 'position'; direction: 'asc' | 'desc' } | null>(null);
   
   // Sort State for Stats Tab
   const [statSort, setStatSort] = useState<{ key: string; direction: 'asc' | 'desc' }>({ 
@@ -26,9 +30,14 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
     direction: 'desc' 
   });
   
-  // Form State
+  // Add Player Form State
   const [newName, setNewName] = useState('');
   const [newPosition, setNewPosition] = useState('');
+
+  // Edit Player State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPosition, setEditPosition] = useState('');
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +52,15 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
     setNewPosition('');
   };
 
+  const handleRosterSort = (key: 'name' | 'position') => {
+    setRosterSort(prev => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
   const handleStatSort = (key: string) => {
     setStatSort(prev => {
       if (prev.key === key) {
@@ -53,13 +71,39 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
     });
   };
 
+  // Editing Handlers
+  const startEditing = (player: SquadPlayer) => {
+    setEditingId(player.id);
+    setEditName(player.name);
+    setEditPosition(player.position || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditPosition('');
+  };
+
+  const saveEditing = () => {
+    if (editingId && editName.trim()) {
+      onUpdatePlayer(editingId, { name: editName, position: editPosition });
+      cancelEditing();
+    }
+  };
+
   // Sort Logic for Roster
   const displaySquad = useMemo(() => {
-    if (isSorted) {
-      return [...squad].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return squad;
-  }, [squad, isSorted]);
+    if (!rosterSort) return squad;
+    
+    return [...squad].sort((a, b) => {
+      const valA = (a[rosterSort.key] || '').toLowerCase();
+      const valB = (b[rosterSort.key] || '').toLowerCase();
+      
+      if (valA < valB) return rosterSort.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return rosterSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [squad, rosterSort]);
 
   // Aggregated Stats Calculation with Sort
   const careerStats = useMemo(() => {
@@ -208,30 +252,32 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
 
           {/* Roster List */}
           <div className="lg:col-span-2">
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={() => setIsSorted(!isSorted)}
-                className="flex items-center text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-red-600 transition-colors bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm"
-              >
-                {isSorted ? (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Reset Order
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" /></svg>
-                    Sort A-Z
-                  </>
-                )}
-              </button>
-            </div>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Position</th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleRosterSort('name')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Name</span>
+                        {rosterSort?.key === 'name' && (
+                           <span className="text-red-500">{rosterSort.direction === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleRosterSort('position')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Position</span>
+                        {rosterSort?.key === 'position' && (
+                           <span className="text-red-500">{rosterSort.direction === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -245,18 +291,77 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                   ) : (
                     displaySquad.map(player => (
                       <tr key={player.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{player.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{player.position || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button 
-                            onClick={() => {
-                                if(window.confirm('Remove player from squad?')) onRemovePlayer(player.id);
-                            }}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Remove
-                          </button>
-                        </td>
+                        {editingId === player.id ? (
+                          /* EDIT MODE */
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input 
+                                type="text" 
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Player Name"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input 
+                                type="text" 
+                                value={editPosition}
+                                onChange={(e) => setEditPosition(e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Position"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                              <button 
+                                onClick={saveEditing} 
+                                className="inline-flex items-center justify-center p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                title="Save"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              </button>
+                              <button 
+                                onClick={cancelEditing} 
+                                className="inline-flex items-center justify-center p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                                title="Cancel"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          /* VIEW MODE */
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{player.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{player.position || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex justify-end space-x-2">
+                                <button 
+                                  onClick={() => startEditing(player)}
+                                  className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50"
+                                  title="Edit Player"
+                                >
+                                  {/* Pencil Icon */}
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                      if(window.confirm('Remove player from squad?')) onRemovePlayer(player.id);
+                                  }}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                                  title="Remove Player"
+                                >
+                                  {/* Trash Icon */}
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))
                   )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { AuthScreen } from './components/AuthScreen';
@@ -25,6 +26,7 @@ import {
   onSnapshot, 
   addDoc, 
   deleteDoc, 
+  updateDoc,
   doc, 
   orderBy 
 } from 'firebase/firestore';
@@ -59,6 +61,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
+      // Initial fallback to auth profile or email
       if (u) {
         setUserDisplay(u.displayName || u.email?.split('@')[0] || 'Coach');
       }
@@ -66,6 +69,34 @@ export const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // --- USER PROFILE LISTENER (Fix for Username Display) ---
+  useEffect(() => {
+    if (!user) return;
+    
+    // Listen to the user's profile document in Firestore
+    const profileRef = doc(db, 'users', user.uid);
+    const unsubProfile = onSnapshot(profileRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        
+        // Priority: Database Username -> Auth Profile Name -> Email Prefix
+        if (data.username) {
+          setUserDisplay(data.username);
+        } else if (user.displayName) {
+          setUserDisplay(user.displayName);
+        } else {
+          setUserDisplay(user.email?.split('@')[0] || 'Coach');
+        }
+
+        // Also sync other profile settings if they exist
+        if (data.clubName) localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', data.clubName);
+        if (data.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', data.logo);
+      }
+    });
+    
+    return () => unsubProfile();
+  }, [user]);
 
   // --- DATA ---
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
@@ -152,6 +183,12 @@ export const App: React.FC = () => {
   const handleRemoveSquadPlayer = async (id: string) => {
     if (!user) return;
     await deleteDoc(doc(db, 'users', user.uid, 'squad', id));
+  };
+
+  const handleUpdateSquadPlayer = async (id: string, updates: Partial<SquadPlayer>) => {
+    if (!user) return;
+    const playerRef = doc(db, 'users', user.uid, 'squad', id);
+    await updateDoc(playerRef, updates);
   };
 
   const handleSaveTrainingSession = async (session: Omit<TrainingSession, 'id'>) => {
@@ -372,6 +409,7 @@ export const App: React.FC = () => {
           onLogout={handleLogout}
           onAddSquadPlayer={handleAddSquadPlayer}
           onRemoveSquadPlayer={handleRemoveSquadPlayer}
+          onUpdateSquadPlayer={handleUpdateSquadPlayer}
           darkMode={darkMode}
           toggleTheme={toggleTheme}
           trainingHistory={trainingHistory}

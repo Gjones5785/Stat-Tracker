@@ -18,6 +18,7 @@ interface DashboardProps {
   onLogout: () => void;
   onAddSquadPlayer: (player: Omit<SquadPlayer, 'id' | 'createdAt'>) => void;
   onRemoveSquadPlayer: (id: string) => void;
+  onUpdateSquadPlayer: (id: string, updates: Partial<SquadPlayer>) => void;
   darkMode: boolean;
   toggleTheme: () => void;
   // Training Props
@@ -39,6 +40,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onLogout,
   onAddSquadPlayer,
   onRemoveSquadPlayer,
+  onUpdateSquadPlayer,
   darkMode,
   toggleTheme,
   trainingHistory = [],
@@ -103,7 +105,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                  </svg>
                </div>
              )}
-             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">LeagueLens</span>
+             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">
+               LeagueLens<span className="text-red-600">.</span>
+             </span>
           </div>
 
           {/* Center: Team Name Input */}
@@ -380,6 +384,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 history={history} 
                 onAddPlayer={onAddSquadPlayer}
                 onRemovePlayer={onRemoveSquadPlayer}
+                onUpdatePlayer={onUpdateSquadPlayer}
             />
           </div>
         )}
