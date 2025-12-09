@@ -10,7 +10,7 @@ import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { MatchCharts } from './components/MatchCharts';
 import { MatchEventLog } from './components/MatchEventLog';
-import { MatchPlanner } from './components/MatchPlanner'; // New import
+import { MatchPlanner } from './components/MatchPlanner';
 import { Button } from './components/Button';
 import { 
   Player, 
@@ -67,6 +67,8 @@ export const App: React.FC = () => {
       setUser(u);
       if (u) {
         setUserDisplay(u.displayName || u.email?.split('@')[0] || 'Coach');
+        // Reset scroll when user explicitly logs in
+        window.scrollTo(0, 0);
       }
       setLoadingAuth(false);
     });
@@ -127,6 +129,12 @@ export const App: React.FC = () => {
 
   // --- STATE: NAVIGATION & MATCH ---
   const [currentScreen, setCurrentScreen] = useState<'dashboard' | 'tracker'>('dashboard');
+  
+  // RESET SCROLL ON SCREEN CHANGE
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentScreen]);
+
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [opponentName, setOpponentName] = useState('');

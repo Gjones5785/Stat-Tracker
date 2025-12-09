@@ -49,6 +49,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteTrainingSession = () => {}
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner'>('matches');
+  
+  // RESET SCROLL ON TAB CHANGE
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentTab]);
+
   const [showGuide, setShowGuide] = useState(false);
   const [isGuideDismissed, setIsGuideDismissed] = useState(() => {
     return localStorage.getItem('RL_TRACKER_GUIDE_DISMISSED') === 'true';

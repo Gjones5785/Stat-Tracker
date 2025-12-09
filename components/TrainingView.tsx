@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from './Button';
 import { SquadPlayer, TrainingSession, TrainingType } from '../types';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface TrainingViewProps {
   squad: SquadPlayer[];
@@ -21,6 +22,9 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
   const [activeTab, setActiveTab] = useState<'stats' | 'history'>('stats');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingAttendeesSessionId, setViewingAttendeesSessionId] = useState<string | null>(null);
+  
+  // Deletion state
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Form State
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -109,6 +113,13 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
     if (!selectedViewSession) return [];
     return squad.filter(p => selectedViewSession.attendeeIds.includes(p.id));
   }, [squad, selectedViewSession]);
+
+  const confirmDelete = () => {
+    if (pendingDeleteId) {
+      onDeleteSession(pendingDeleteId);
+      setPendingDeleteId(null);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -215,7 +226,7 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                 <div className="text-center py-12 text-gray-400">No sessions logged yet.</div>
              ) : (
                history.map(session => (
-                 <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 group">
+                 <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 group transition-colors hover:border-gray-200 dark:hover:border-white/10">
                     <div>
                        <div className="flex items-center space-x-3 mb-1">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">{new Date(session.date).toLocaleDateString()}</span>
@@ -227,7 +238,7 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                        </div>
                        <p className="text-xs text-gray-500 dark:text-gray-400">{session.attendeeIds.length} Attendees</p>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-2">
                        <button 
                           onClick={() => setViewingAttendeesSessionId(session.id)}
                           className="p-2 text-gray-400 hover:text-blue-500 transition-colors bg-white dark:bg-white/5 rounded-lg border border-transparent hover:border-blue-200 shadow-sm"
@@ -238,10 +249,8 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                           </svg>
                        </button>
                        <button 
-                          onClick={() => {
-                             if (window.confirm("Delete this session?")) onDeleteSession(session.id);
-                          }}
-                          className="p-2 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          onClick={() => setPendingDeleteId(session.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg bg-white dark:bg-white/5 shadow-sm border border-transparent hover:border-red-100"
                           title="Delete Session"
                        >
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -374,6 +383,15 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!pendingDeleteId}
+        title="Delete Training Session?"
+        message="Are you sure you want to remove this session? This will recalculate attendance percentages for all players."
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
 
     </div>
   );

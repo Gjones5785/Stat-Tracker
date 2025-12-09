@@ -23,7 +23,6 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   const [secondaryColor, setSecondaryColor] = useState('#FACC15');
   const [useDualColor, setUseDualColor] = useState(false);
   
-  // Lazy initializer: Collapse setup if user has previously saved configuration
   const [isSetupOpen, setIsSetupOpen] = useState(() => {
     return !localStorage.getItem('MATCH_PLANNER_DRAFT');
   });
@@ -33,12 +32,9 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   );
   
   const [selectingJersey, setSelectingJersey] = useState<string | null>(null);
-  
-  // Custom Confirmation Modal State
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isClearPositionsModalOpen, setIsClearPositionsModalOpen] = useState(false);
 
-  // Persistence: Load on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('MATCH_PLANNER_DRAFT');
@@ -55,7 +51,6 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     }
   }, []);
 
-  // Persistence: Save on changes
   useEffect(() => {
     localStorage.setItem('MATCH_PLANNER_DRAFT', JSON.stringify({
       assignments,
@@ -70,11 +65,9 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
 
   const toggleAvailability = (id: string) => {
     if (availableIds.includes(id)) {
-        // Removing availability: must also remove from any jersey assignment
         setAssignments(prev => prev.map(a => a.squadId === id ? { ...a, squadId: null } : a));
         setAvailableIds(prev => prev.filter(pId => pId !== id));
     } else {
-        // Adding availability
         setAvailableIds(prev => [...prev, id]);
     }
   };
@@ -85,11 +78,8 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   };
 
   const confirmResetAvailability = () => {
-    // 1. Clear Availability list
     setAvailableIds([]);
-    // 2. Clear lineup draft
     setAssignments(prev => prev.map(a => ({ ...a, squadId: null })));
-    // 3. Clear local storage explicitly to be safe
     localStorage.removeItem('MATCH_PLANNER_DRAFT');
     setIsResetModalOpen(false);
   };
@@ -137,14 +127,53 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 print:block">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <style>{`
         @media print {
-          header, footer, nav, aside, .print-hide { display: none !important; }
-          body { background: white !important; }
-          .print-area { margin: 0 !important; width: 100% !important; border: none !important; shadow: none !important; }
-          .print-center { display: flex; flex-direction: column; align-items: center; width: 100% !important; }
-          @page { margin: 1cm; size: auto; }
+          /* Targeted reset for the print lineup layout */
+          html, body { 
+            height: auto !important; 
+            overflow: visible !important; 
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* Hide everything by default */
+          body * { 
+            visibility: hidden !important; 
+          }
+
+          /* Show ONLY the lineup card */
+          #lineup-card, #lineup-card * { 
+            visibility: visible !important; 
+          }
+
+          #lineup-card {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 2cm !important;
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+
+          /* Printing context forces white text on primary jerseys often, 
+             ensure black/transparent labels are sharp */
+          .bg-black\\/80 { background-color: black !important; color: white !important; }
+          .bg-green-600 { background-color: #16a34a !important; }
+          
+          /* Remove buttons and dropdowns from card during print */
+          .print-hide { display: none !important; }
+          
+          /* Ensure jerseys maintain their colors */
+          [style*="background"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
       `}</style>
 
@@ -184,14 +213,11 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                 </div>
               ))}
             </div>
-            {squad.length === 0 && (
-              <p className="text-center text-sm text-gray-400 py-12 italic">No squad members found. Add players in Squad & Stats tab.</p>
-            )}
           </div>
         </div>
       </div>
 
-      <div className="lg:col-span-3 space-y-6 print:space-y-4 print-area">
+      <div className="lg:col-span-3 space-y-6">
         <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl shadow-apple border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 print-hide">
            <button 
              onClick={() => setIsSetupOpen(!isSetupOpen)}
@@ -209,12 +235,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                   <label className="text-[10px] font-bold text-gray-400 uppercase mb-3 block">Primary Color</label>
                   <div className="flex flex-wrap gap-2">
                     {COLOR_OPTIONS.map(c => (
-                      <button 
-                        key={c} 
-                        onClick={() => setPrimaryColor(c)}
-                        className={`w-8 h-8 rounded-full border-2 ${primaryColor === c ? 'border-blue-500 scale-110' : 'border-transparent dark:border-white/10'}`}
-                        style={{ backgroundColor: c }}
-                      />
+                      <button key={c} onClick={() => setPrimaryColor(c)} className={`w-8 h-8 rounded-full border-2 ${primaryColor === c ? 'border-blue-500 scale-110' : 'border-transparent dark:border-white/10'}`} style={{ backgroundColor: c }} />
                     ))}
                   </div>
                 </div>
@@ -222,21 +243,11 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <label className="text-[10px] font-bold text-gray-400 uppercase block">Secondary Color</label>
-                    <button 
-                      onClick={() => setUseDualColor(!useDualColor)}
-                      className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase transition-colors shadow-sm ${useDualColor ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/10 text-gray-500 border border-gray-200 dark:border-white/5'}`}
-                    >
-                      {useDualColor ? 'Dual On' : 'Dual Off'}
-                    </button>
+                    <button onClick={() => setUseDualColor(!useDualColor)} className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase transition-colors shadow-sm ${useDualColor ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/10 text-gray-500 border border-gray-200 dark:border-white/5'}`}>{useDualColor ? 'Dual On' : 'Dual Off'}</button>
                   </div>
                   <div className={`flex flex-wrap gap-2 transition-opacity ${useDualColor ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
                     {COLOR_OPTIONS.map(c => (
-                      <button 
-                        key={c} 
-                        onClick={() => setSecondaryColor(c)}
-                        className={`w-8 h-8 rounded-full border-2 ${secondaryColor === c ? 'border-blue-500 scale-110' : 'border-transparent dark:border-white/10'}`}
-                        style={{ backgroundColor: c }}
-                      />
+                      <button key={c} onClick={() => setSecondaryColor(c)} className={`w-8 h-8 rounded-full border-2 ${secondaryColor === c ? 'border-blue-500 scale-110' : 'border-transparent dark:border-white/10'}`} style={{ backgroundColor: c }} />
                     ))}
                   </div>
                 </div>
@@ -244,11 +255,11 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
            )}
         </div>
 
-        <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple border border-gray-100 dark:border-white/5 relative flex flex-col print:shadow-none print:border-none print-area">
-           <div className="flex justify-between items-center mb-6 print:mb-8">
+        <div id="lineup-card" className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple border border-gray-100 dark:border-white/5 relative flex flex-col">
+           <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-xl font-heading font-bold text-slate-900 dark:text-white print:text-2xl">Lineup Draft</h3>
-                <p className="hidden print:block text-slate-500 text-sm font-heading font-bold uppercase tracking-widest mt-1">
+                <h3 className="text-xl font-heading font-bold text-slate-900 dark:text-white print:text-3xl print:text-black">Lineup Draft</h3>
+                <p className="text-slate-500 text-sm font-heading font-bold uppercase tracking-widest mt-1 print:text-black">
                   {localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'Team Roster'}
                 </p>
               </div>
@@ -257,11 +268,11 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                     Print Lineup
                  </Button>
-                 <Button onClick={() => setIsClearPositionsModalOpen(true)} variant="secondary" className="text-xs py-1 px-4 border-gray-200 dark:border-white/10 shadow-none">Reset All Positions</Button>
+                 <Button onClick={() => setIsClearPositionsModalOpen(true)} variant="secondary" className="text-xs py-1 px-4 border-gray-200 dark:border-white/10 shadow-none">Reset Positions</Button>
               </div>
            </div>
 
-           <div className="relative bg-green-600 dark:bg-green-800 rounded-2xl w-full aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8 print:mb-12 print-center">
+           <div className="relative bg-green-600 rounded-2xl w-full aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8">
               {[10, 20, 30, 40, 50, 60, 70, 80, 90].map(line => (
                 <div key={line} className={`absolute left-0 w-full h-px ${line === 50 ? 'bg-white' : 'bg-white/50'}`} style={{ top: `${line}%` }}></div>
               ))}
@@ -276,26 +287,19 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                     <div 
                        key={jersey}
                        onClick={() => setSelectingJersey(jersey)}
-                       className="absolute flex flex-col items-center group cursor-pointer z-10 print:pointer-events-none"
+                       className="absolute flex flex-col items-center group cursor-pointer z-10"
                        style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                     >
                        <div 
                           className={`w-10 h-10 md:w-12 md:h-12 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-transform group-hover:scale-110 group-hover:-translate-y-1 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`}
                           style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}
                        >
-                          <span className={`drop-shadow-sm ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>
-                            {jersey}
-                          </span>
+                          <span className={`drop-shadow-sm ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{jersey}</span>
                        </div>
                        
-                       <div className="mt-1.5 flex flex-col items-center space-y-0.5 max-w-[80px] md:max-w-[100px]">
+                       <div className="mt-1 flex flex-col items-center space-y-0.5 max-w-[80px] w-full pointer-events-none">
                           {nameParts.map((part, idx) => (
-                            <span 
-                              key={idx} 
-                              className={`text-[10px] md:text-[12px] leading-tight font-black text-white tracking-widest uppercase bg-black/70 px-2 rounded backdrop-blur-sm shadow-md ring-1 ring-white/10 ${!rawName ? 'invisible' : ''}`}
-                            >
-                              {part}
-                            </span>
+                            <span key={idx} className={`text-[9px] md:text-[10px] leading-tight font-black text-white tracking-tighter uppercase bg-black/80 px-1 py-0.5 rounded shadow-sm w-fit max-w-full truncate ${!rawName ? 'invisible' : ''}`}>{part}</span>
                           ))}
                        </div>
                     </div>
@@ -303,8 +307,8 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
               })}
            </div>
 
-           <div className="mt-4 pt-6 border-t border-gray-100 dark:border-white/5 print:border-slate-200">
-              <h4 className="text-sm font-heading font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center print:text-slate-900">Substitutes & 18th Man</h4>
+           <div className="mt-4 pt-6 border-t border-gray-100 dark:border-white/5 print:border-black">
+              <h4 className="text-sm font-heading font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center print:text-black">Substitutes & 18th Man</h4>
               
               <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
                  <div className="flex gap-4">
@@ -314,20 +318,13 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                        const nameParts = rawName ? rawName.split(' ') : [];
 
                        return (
-                          <div 
-                             key={num}
-                             onClick={() => setSelectingJersey(num)}
-                             className="flex flex-col items-center group cursor-pointer print:pointer-events-none"
-                          >
-                             <div 
-                                className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`}
-                                style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}
-                             >
+                          <div key={num} onClick={() => setSelectingJersey(num)} className="flex flex-col items-center group cursor-pointer">
+                             <div className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}>
                                 <span className={`text-xs ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{num}</span>
                              </div>
                              <div className="mt-1 flex flex-col items-center min-h-[30px] max-w-[60px]">
                                 {nameParts.map((part, idx) => (
-                                   <span key={idx} className={`text-[8px] font-black text-gray-500 uppercase tracking-tighter text-center ${!rawName ? 'invisible' : ''}`}>{part}</span>
+                                   <span key={idx} className={`text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black ${!rawName ? 'invisible' : ''}`}>{part}</span>
                                 ))}
                              </div>
                           </div>
@@ -335,19 +332,16 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                     })}
                  </div>
 
-                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 print:bg-slate-200"></div>
+                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 print:bg-black"></div>
 
-                 <div className="flex flex-col items-center group cursor-pointer print:pointer-events-none" onClick={() => setSelectingJersey('18')}>
-                    <div 
-                       className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ring-2 ring-indigo-500/20 ${!assignments.find(a => a.jersey === '18')?.squadId ? 'opacity-30 bg-gray-600' : ''}`}
-                       style={{ background: assignments.find(a => a.jersey === '18')?.squadId ? getJerseyBackground() : undefined }}
-                    >
+                 <div className="flex flex-col items-center group cursor-pointer" onClick={() => setSelectingJersey('18')}>
+                    <div className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ring-2 ring-indigo-500/20 ${!assignments.find(a => a.jersey === '18')?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignments.find(a => a.jersey === '18')?.squadId ? getJerseyBackground() : undefined }}>
                        <span className={`text-xs ${assignments.find(a => a.jersey === '18')?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>18</span>
                     </div>
-                    <span className="text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5">18th Man</span>
+                    <span className="text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5 print:text-black">18th Man</span>
                     <div className="mt-0.5 flex flex-col items-center min-h-[30px] max-w-[60px]">
                        {getPlayerName(assignments.find(a => a.jersey === '18')?.squadId || null)?.split(' ').map((part, idx) => (
-                          <span key={idx} className="text-[8px] font-black text-gray-500 uppercase tracking-tighter text-center">{part}</span>
+                          <span key={idx} className="text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black">{part}</span>
                        ))}
                     </div>
                  </div>
@@ -360,28 +354,15 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                  <div className="relative z-50 bg-white dark:bg-[#1A1A1C] border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl p-6 max-h-[80%] w-full max-w-sm flex flex-col">
                     <div className="flex justify-between items-center mb-6">
                        <h4 className="text-xl font-heading font-bold">Assign Jersey #{selectingJersey}</h4>
-                       <button onClick={() => setSelectingJersey(null)} className="text-gray-400">✕</button>
+                       <button onClick={() => setSelectingJersey(null)} className="text-gray-400 text-xl font-black">✕</button>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar">
-                       <div 
-                         onClick={() => assignPlayer(selectingJersey, null)}
-                         className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl font-bold text-red-500 cursor-pointer border border-transparent hover:border-red-500/30 text-center"
-                       >
-                          Clear Position
-                       </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-2">
+                       <div onClick={() => assignPlayer(selectingJersey, null)} className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl font-bold text-red-500 cursor-pointer border border-transparent hover:border-red-500/30 text-center transition-all">Clear Position</div>
                        {getUnassignedAvailable().map(p => (
-                          <div 
-                            key={p.id} 
-                            onClick={() => assignPlayer(selectingJersey, p.id)}
-                            className="p-4 bg-white dark:bg-white/10 rounded-2xl font-bold cursor-pointer border border-gray-100 dark:border-white/5 hover:border-blue-500/50"
-                          >
-                             {p.name}
-                          </div>
+                          <div key={p.id} onClick={() => assignPlayer(selectingJersey, p.id)} className="p-4 bg-white dark:bg-white/10 rounded-2xl font-bold cursor-pointer border border-gray-100 dark:border-white/5 hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all">{p.name}</div>
                        ))}
-                       {getUnassignedAvailable().length === 0 && (
-                          <p className="text-center text-gray-500 py-8 italic text-sm">No unassigned available players.</p>
-                       )}
+                       {getUnassignedAvailable().length === 0 && <p className="text-center text-gray-500 py-8 italic text-sm">No unassigned available players.</p>}
                     </div>
                  </div>
               </div>
@@ -389,22 +370,8 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
         </div>
       </div>
 
-      {/* Confirmation Modals */}
-      <ConfirmationModal 
-        isOpen={isResetModalOpen}
-        title="Reset Planner?"
-        message="This will clear availability status and all field assignments for this session. Are you sure?"
-        onConfirm={confirmResetAvailability}
-        onCancel={() => setIsResetModalOpen(false)}
-      />
-
-      <ConfirmationModal 
-        isOpen={isClearPositionsModalOpen}
-        title="Clear All Positions?"
-        message="This will remove all players from the field draft without affecting availability. Are you sure?"
-        onConfirm={confirmClearPositions}
-        onCancel={() => setIsClearPositionsModalOpen(false)}
-      />
+      <ConfirmationModal isOpen={isResetModalOpen} title="Reset Planner?" message="This will clear availability tracking and all field assignments for this session. Are you sure?" onConfirm={confirmResetAvailability} onCancel={() => setIsResetModalOpen(false)} />
+      <ConfirmationModal isOpen={isClearPositionsModalOpen} title="Clear All Positions?" message="This will remove all players from the field draft without affecting availability. Are you sure?" onConfirm={confirmClearPositions} onCancel={() => setIsClearPositionsModalOpen(false)} />
     </div>
   );
 };
