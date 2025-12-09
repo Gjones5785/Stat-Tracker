@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from './Button';
 import { SquadPlayer, TrainingSession, TrainingType } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -8,6 +8,7 @@ interface TrainingViewProps {
   squad: SquadPlayer[];
   history: TrainingSession[];
   onSaveSession: (session: Omit<TrainingSession, 'id'>) => void;
+  onUpdateSession: (id: string, updates: Partial<TrainingSession>) => void;
   onDeleteSession: (id: string) => void;
   onAddSquadPlayer: (player: Omit<SquadPlayer, 'id' | 'createdAt'>) => void;
 }
@@ -16,6 +17,7 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
   squad,
   history,
   onSaveSession,
+  onUpdateSession,
   onDeleteSession,
   onAddSquadPlayer
 }) => {
@@ -31,6 +33,10 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
   const [sessionType, setSessionType] = useState<TrainingType>('Pitch');
   const [selectedAttendees, setSelectedAttendees] = useState<Set<string>>(new Set());
   const [newPlayerName, setNewPlayerName] = useState('');
+
+  // Editing Session State
+  const [isEditingAttendees, setIsEditingAttendees] = useState(false);
+  const [editingAttendeesSet, setEditingAttendeesSet] = useState<Set<string>>(new Set());
 
   // --- STATS CALCULATION ---
   const attendanceStats = useMemo(() => {
@@ -120,6 +126,37 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
       setPendingDeleteId(null);
     }
   };
+
+  // Edit Handlers
+  const handleStartEditing = () => {
+    if (selectedViewSession) {
+      setEditingAttendeesSet(new Set(selectedViewSession.attendeeIds));
+      setIsEditingAttendees(true);
+    }
+  };
+
+  const handleToggleEditAttendee = (id: string) => {
+    const newSet = new Set(editingAttendeesSet);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setEditingAttendeesSet(newSet);
+  };
+
+  const handleSaveAttendeeChanges = () => {
+    if (selectedViewSession) {
+      onUpdateSession(selectedViewSession.id, {
+        attendeeIds: Array.from(editingAttendeesSet)
+      });
+      setIsEditingAttendees(false);
+    }
+  };
+
+  // Reset edit state when modal closes
+  useEffect(() => {
+    if (!viewingAttendeesSessionId) {
+      setIsEditingAttendees(false);
+    }
+  }, [viewingAttendeesSessionId]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -263,36 +300,95 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
         )}
       </div>
 
-      {/* View Attendees Modal */}
+      {/* View/Edit Attendees Modal */}
       {viewingAttendeesSessionId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setViewingAttendeesSessionId(null)} />
            <div className="relative bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl max-w-sm w-full max-h-[70vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-white/10">
               <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
                  <div>
-                    <h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white">Attendees</h3>
+                    <h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white">
+                      {isEditingAttendees ? 'Edit Attendees' : 'Attendees'}
+                    </h3>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedViewSession ? new Date(selectedViewSession.date).toLocaleDateString() : ''}</p>
                  </div>
-                 <button onClick={() => setViewingAttendeesSessionId(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                 </button>
+                 <div className="flex items-center space-x-2">
+                   {!isEditingAttendees && (
+                     <button onClick={handleStartEditing} className="p-1.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Edit List">
+                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                     </button>
+                   )}
+                   <button onClick={() => setViewingAttendeesSessionId(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                   </button>
+                 </div>
               </div>
+              
               <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-                 {viewingSessionAttendees.length === 0 ? (
-                    <p className="text-center text-gray-400 py-8 text-sm italic">No attendees found.</p>
-                 ) : (
-                    viewingSessionAttendees.map(p => (
-                       <div key={p.id} className="flex items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                          <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center mr-3 shadow-sm border border-gray-100 dark:border-white/5">
-                             <span className="text-[10px] font-bold text-indigo-500">#</span>
-                          </div>
-                          <span className="text-sm font-bold text-slate-800 dark:text-gray-200">{p.name}</span>
+                 {isEditingAttendees ? (
+                   /* EDIT MODE: Show All Squad with Checkboxes */
+                   <div className="space-y-4">
+                     <div className="space-y-2">
+                       {squad.map(player => (
+                          <label key={player.id} className="flex items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 cursor-pointer hover:bg-white dark:hover:bg-white/10 transition-colors">
+                             <input 
+                               type="checkbox"
+                               checked={editingAttendeesSet.has(player.id)}
+                               onChange={() => handleToggleEditAttendee(player.id)}
+                               className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300 mr-3"
+                             />
+                             <span className="text-sm font-bold text-slate-800 dark:text-gray-200">{player.name}</span>
+                          </label>
+                       ))}
+                       {squad.length === 0 && <p className="text-center text-sm text-gray-400">No squad members.</p>}
+                     </div>
+                     
+                     {/* Add New Player in Edit Mode */}
+                     <div className="border-t border-gray-100 dark:border-white/10 pt-4 mt-4">
+                       <label className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Add Missing Player</label>
+                       <div className="flex space-x-2">
+                          <input 
+                            type="text"
+                            value={newPlayerName}
+                            onChange={(e) => setNewPlayerName(e.target.value)}
+                            placeholder="Enter name..."
+                            className="flex-1 px-3 py-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-900 dark:text-white placeholder-gray-400"
+                          />
+                          <Button onClick={handleQuickAddPlayer} variant="secondary" className="whitespace-nowrap text-xs px-3">
+                             + Add
+                          </Button>
                        </div>
-                    ))
+                       <p className="text-[10px] text-gray-400 mt-1">New players will appear in the list above. Check to add them.</p>
+                     </div>
+                   </div>
+                 ) : (
+                   /* VIEW MODE: Show Only Attendees */
+                   <>
+                     {viewingSessionAttendees.length === 0 ? (
+                        <p className="text-center text-gray-400 py-8 text-sm italic">No attendees found.</p>
+                     ) : (
+                        viewingSessionAttendees.map(p => (
+                           <div key={p.id} className="flex items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                              <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center mr-3 shadow-sm border border-gray-100 dark:border-white/5">
+                                 <span className="text-[10px] font-bold text-indigo-500">#</span>
+                              </div>
+                              <span className="text-sm font-bold text-slate-800 dark:text-gray-200">{p.name}</span>
+                           </div>
+                        ))
+                     )}
+                   </>
                  )}
               </div>
-              <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex justify-center">
-                 <Button variant="secondary" onClick={() => setViewingAttendeesSessionId(null)} className="w-full text-xs">Close List</Button>
+
+              <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex space-x-3 justify-center">
+                 {isEditingAttendees ? (
+                   <>
+                     <Button variant="secondary" onClick={() => setIsEditingAttendees(false)} className="flex-1 text-xs">Cancel</Button>
+                     <Button onClick={handleSaveAttendeeChanges} className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white">Save Changes</Button>
+                   </>
+                 ) : (
+                   <Button variant="secondary" onClick={() => setViewingAttendeesSessionId(null)} className="w-full text-xs">Close List</Button>
+                 )}
               </div>
            </div>
         </div>

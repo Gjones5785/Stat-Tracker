@@ -196,6 +196,12 @@ export const App: React.FC = () => {
       await addDoc(collection(db, 'users', user.uid, 'training'), session);
   };
   
+  const handleUpdateTrainingSession = async (id: string, updates: Partial<TrainingSession>) => {
+      if (!user) return;
+      const sessionRef = doc(db, 'users', user.uid, 'training', id);
+      await updateDoc(sessionRef, updates);
+  };
+  
   const handleDeleteTrainingSession = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'training', id));
@@ -494,6 +500,7 @@ export const App: React.FC = () => {
           toggleTheme={toggleTheme}
           trainingHistory={trainingHistory}
           onSaveTrainingSession={handleSaveTrainingSession}
+          onUpdateTrainingSession={handleUpdateTrainingSession}
           onDeleteTrainingSession={handleDeleteTrainingSession}
         />
       ) : (

@@ -25,6 +25,7 @@ interface DashboardProps {
   toggleTheme: () => void;
   trainingHistory?: TrainingSession[];
   onSaveTrainingSession?: (session: Omit<TrainingSession, 'id'>) => void;
+  onUpdateTrainingSession?: (id: string, updates: Partial<TrainingSession>) => void;
   onDeleteTrainingSession?: (id: string) => void;
 }
 
@@ -46,6 +47,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   toggleTheme,
   trainingHistory = [],
   onSaveTrainingSession = () => {},
+  onUpdateTrainingSession = () => {},
   onDeleteTrainingSession = () => {}
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner'>('matches');
@@ -216,7 +218,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
 
         {currentTab === 'training' && (
-          <TrainingView squad={squad} history={trainingHistory} onSaveSession={onSaveTrainingSession} onDeleteSession={onDeleteTrainingSession} onAddSquadPlayer={onAddSquadPlayer} />
+          <TrainingView squad={squad} history={trainingHistory} onSaveSession={onSaveTrainingSession} onUpdateSession={onUpdateTrainingSession} onDeleteSession={onDeleteTrainingSession} onAddSquadPlayer={onAddSquadPlayer} />
         )}
 
         {currentTab === 'planner' && (

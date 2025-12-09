@@ -103,20 +103,22 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     return squad.filter(s => availableIds.includes(s.id) && !assignedIds.has(s.id));
   };
 
+  // REFINED POSITIONS: Increased vertical spread to prevent overlap
+  // Mobile layout (9:16 aspect ratio) allows for more vertical distance
   const positions: Record<string, { top: string; left: string }> = {
-    '1': { top: '85%', left: '50%' },
-    '2': { top: '75%', left: '80%' },
-    '3': { top: '70%', left: '70%' },
-    '4': { top: '70%', left: '30%' },
-    '5': { top: '75%', left: '20%' },
-    '6': { top: '60%', left: '60%' },
-    '7': { top: '50%', left: '50%' },
-    '13': { top: '40%', left: '50%' },
-    '12': { top: '30%', left: '60%' },
-    '11': { top: '30%', left: '40%' },
-    '10': { top: '15%', left: '75%' },
-    '9': { top: '15%', left: '50%' },
-    '8': { top: '15%', left: '25%' }
+    '1': { top: '93%', left: '50%' }, // Fullback (Bottom)
+    '2': { top: '84%', left: '88%' }, // Wing Right
+    '5': { top: '84%', left: '12%' }, // Wing Left
+    '3': { top: '75%', left: '72%' }, // Centre Right
+    '4': { top: '75%', left: '28%' }, // Centre Left
+    '6': { top: '63%', left: '70%' }, // Stand Off
+    '7': { top: '53%', left: '30%' }, // Scrum Half
+    '13': { top: '40%', left: '50%' }, // Lock
+    '12': { top: '25%', left: '75%' }, // 2nd Row
+    '11': { top: '25%', left: '25%' }, // 2nd Row
+    '10': { top: '10%', left: '80%' }, // Prop
+    '9': { top: '10%', left: '50%' },  // Hooker
+    '8': { top: '10%', left: '20%' }   // Prop
   };
 
   const getJerseyBackground = () => {
@@ -130,24 +132,14 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <style>{`
         @media print {
-          /* Targeted reset for the print lineup layout */
           html, body { 
             height: auto !important; 
             overflow: visible !important; 
             margin: 0 !important;
             padding: 0 !important;
           }
-
-          /* Hide everything by default */
-          body * { 
-            visibility: hidden !important; 
-          }
-
-          /* Show ONLY the lineup card */
-          #lineup-card, #lineup-card * { 
-            visibility: visible !important; 
-          }
-
+          body * { visibility: hidden !important; }
+          #lineup-card, #lineup-card * { visibility: visible !important; }
           #lineup-card {
             position: absolute !important;
             left: 0 !important;
@@ -160,16 +152,9 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
             border: none !important;
             box-shadow: none !important;
           }
-
-          /* Printing context forces white text on primary jerseys often, 
-             ensure black/transparent labels are sharp */
           .bg-black\\/80 { background-color: black !important; color: white !important; }
           .bg-green-600 { background-color: #16a34a !important; }
-          
-          /* Remove buttons and dropdowns from card during print */
           .print-hide { display: none !important; }
-          
-          /* Ensure jerseys maintain their colors */
           [style*="background"] {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -272,7 +257,8 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
               </div>
            </div>
 
-           <div className="relative bg-green-600 rounded-2xl w-full aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8">
+           {/* Field Canvas - Taller on mobile (9/16) to prevent overlap */}
+           <div className="relative bg-green-600 rounded-2xl w-full aspect-[9/16] md:aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8">
               {[10, 20, 30, 40, 50, 60, 70, 80, 90].map(line => (
                 <div key={line} className={`absolute left-0 w-full h-px ${line === 50 ? 'bg-white' : 'bg-white/50'}`} style={{ top: `${line}%` }}></div>
               ))}
@@ -291,15 +277,15 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                        style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                     >
                        <div 
-                          className={`w-10 h-10 md:w-12 md:h-12 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-transform group-hover:scale-110 group-hover:-translate-y-1 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`}
+                          className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-transform group-hover:scale-110 group-hover:-translate-y-1 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`}
                           style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}
                        >
-                          <span className={`drop-shadow-sm ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{jersey}</span>
+                          <span className={`text-[8px] sm:text-xs drop-shadow-sm ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{jersey}</span>
                        </div>
                        
-                       <div className="mt-1 flex flex-col items-center space-y-0.5 max-w-[80px] w-full pointer-events-none">
+                       <div className="mt-0.5 flex flex-col items-center space-y-px max-w-[55px] sm:max-w-[70px] md:max-w-[80px] w-full pointer-events-none">
                           {nameParts.map((part, idx) => (
-                            <span key={idx} className={`text-[9px] md:text-[10px] leading-tight font-black text-white tracking-tighter uppercase bg-black/80 px-1 py-0.5 rounded shadow-sm w-fit max-w-full truncate ${!rawName ? 'invisible' : ''}`}>{part}</span>
+                            <span key={idx} className={`text-[7px] sm:text-[9px] md:text-[10px] leading-tight font-black text-white tracking-tighter uppercase bg-black/80 px-1 py-px rounded shadow-sm w-fit max-w-full truncate ${!rawName ? 'invisible' : ''}`}>{part}</span>
                           ))}
                        </div>
                     </div>
@@ -310,8 +296,8 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
            <div className="mt-4 pt-6 border-t border-gray-100 dark:border-white/5 print:border-black">
               <h4 className="text-sm font-heading font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center print:text-black">Substitutes & 18th Man</h4>
               
-              <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
-                 <div className="flex gap-4">
+              <div className="flex flex-wrap justify-center gap-x-4 sm:gap-x-8 gap-y-6">
+                 <div className="flex gap-2 sm:gap-4">
                     {['14', '15', '16', '17'].map(num => {
                        const assignment = assignments.find(a => a.jersey === num);
                        const rawName = getPlayerName(assignment?.squadId || null);
@@ -319,12 +305,12 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
 
                        return (
                           <div key={num} onClick={() => setSelectingJersey(num)} className="flex flex-col items-center group cursor-pointer">
-                             <div className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}>
-                                <span className={`text-xs ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{num}</span>
+                             <div className={`w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ${!assignment?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignment?.squadId ? getJerseyBackground() : undefined }}>
+                                <span className={`text-[8px] sm:text-xs ${assignment?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>{num}</span>
                              </div>
-                             <div className="mt-1 flex flex-col items-center min-h-[30px] max-w-[60px]">
+                             <div className="mt-1 flex flex-col items-center min-h-[24px] sm:min-h-[30px] max-w-[50px] sm:max-w-[60px]">
                                 {nameParts.map((part, idx) => (
-                                   <span key={idx} className={`text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black ${!rawName ? 'invisible' : ''}`}>{part}</span>
+                                   <span key={idx} className={`text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black ${!rawName ? 'invisible' : ''}`}>{part}</span>
                                 ))}
                              </div>
                           </div>
@@ -332,16 +318,16 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                     })}
                  </div>
 
-                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 print:bg-black"></div>
+                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 print:bg-black hidden sm:block"></div>
 
                  <div className="flex flex-col items-center group cursor-pointer" onClick={() => setSelectingJersey('18')}>
-                    <div className={`w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ring-2 ring-indigo-500/20 ${!assignments.find(a => a.jersey === '18')?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignments.find(a => a.jersey === '18')?.squadId ? getJerseyBackground() : undefined }}>
-                       <span className={`text-xs ${assignments.find(a => a.jersey === '18')?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>18</span>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ring-2 ring-indigo-500/20 ${!assignments.find(a => a.jersey === '18')?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignments.find(a => a.jersey === '18')?.squadId ? getJerseyBackground() : undefined }}>
+                       <span className={`text-[8px] sm:text-xs ${assignments.find(a => a.jersey === '18')?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>18</span>
                     </div>
-                    <span className="text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5 print:text-black">18th Man</span>
-                    <div className="mt-0.5 flex flex-col items-center min-h-[30px] max-w-[60px]">
+                    <span className="text-[6px] sm:text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5 print:text-black">18th Man</span>
+                    <div className="mt-0.5 flex flex-col items-center min-h-[24px] sm:min-h-[30px] max-w-[60px]">
                        {getPlayerName(assignments.find(a => a.jersey === '18')?.squadId || null)?.split(' ').map((part, idx) => (
-                          <span key={idx} className="text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black">{part}</span>
+                          <span key={idx} className="text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black">{part}</span>
                        ))}
                     </div>
                  </div>
