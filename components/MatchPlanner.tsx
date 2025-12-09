@@ -89,10 +89,6 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     setIsClearPositionsModalOpen(false);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const getPlayerName = (id: string | null) => {
     if (!id) return null;
     return squad.find(s => s.id === id)?.name || null;
@@ -132,33 +128,78 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <style>{`
         @media print {
+          @page {
+            size: auto;
+            margin: 0;
+          }
+          
           html, body { 
             height: auto !important; 
             overflow: visible !important; 
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+            color: black !important;
           }
-          body * { visibility: hidden !important; }
-          #lineup-card, #lineup-card * { visibility: visible !important; }
+
+          /* Hide everything by default */
+          body > * {
+            display: none !important;
+          }
+          
+          /* We can't use display:none on parents because it kills the child. 
+             So we use the visibility trick for the react root. */
+          body * { 
+            visibility: hidden !important; 
+          }
+
+          /* Show the lineup card and its children */
+          #lineup-card, #lineup-card * { 
+            visibility: visible !important; 
+          }
+
           #lineup-card {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
+            max-width: none !important;
             height: auto !important;
             margin: 0 !important;
-            padding: 2cm !important;
+            padding: 20px !important;
             background: white !important;
             border: none !important;
             box-shadow: none !important;
+            z-index: 9999;
           }
-          .bg-black\\/80 { background-color: black !important; color: white !important; }
-          .bg-green-600 { background-color: #16a34a !important; }
-          .print-hide { display: none !important; }
-          [style*="background"] {
+
+          /* Hide interface elements */
+          .print-hide, button, [role="button"] { 
+            display: none !important; 
+          }
+
+          /* Color Overrides for Dark Mode Safety */
+          #lineup-card h3, 
+          #lineup-card h4, 
+          #lineup-card p {
+            color: black !important;
+          }
+
+          /* Preserve White Text on Jerseys/Badges */
+          #lineup-card .text-white, 
+          #lineup-card .text-white * {
+             color: white !important;
+             -webkit-text-fill-color: white !important;
+          }
+          
+          /* Ensure Background Colors Print */
+          * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          
+          /* Override Tailwind Dark Mode Text Colors if specific classes interfere */
+          .dark #lineup-card h3 { color: black !important; }
         }
       `}</style>
 
@@ -189,7 +230,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                   }`}
                 >
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-bold truncate pr-1">{player.name}</span>
+                    <span className="text-[11px] font-bold truncate pr-1 text-slate-900 dark:text-white">{player.name}</span>
                     <span className="text-[8px] uppercase font-bold text-gray-400 truncate leading-none mt-0.5">{player.position || 'Player'}</span>
                   </div>
                   {isAvailable(player.id) && (
@@ -197,6 +238,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                   )}
                 </div>
               ))}
+              {squad.length === 0 && <p className="col-span-2 text-center text-xs text-gray-400 py-4">No squad members.</p>}
             </div>
           </div>
         </div>
@@ -243,22 +285,18 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
         <div id="lineup-card" className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple border border-gray-100 dark:border-white/5 relative flex flex-col">
            <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-xl font-heading font-bold text-slate-900 dark:text-white print:text-3xl print:text-black">Lineup Draft</h3>
-                <p className="text-slate-500 text-sm font-heading font-bold uppercase tracking-widest mt-1 print:text-black">
+                <h3 className="text-xl font-heading font-bold text-slate-900 dark:text-white">Lineup Draft</h3>
+                <p className="text-slate-500 text-sm font-heading font-bold uppercase tracking-widest mt-1">
                   {localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'Team Roster'}
                 </p>
               </div>
               <div className="flex space-x-3 print-hide">
-                 <Button onClick={handlePrint} className="text-xs py-1 px-4 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                    Print Lineup
-                 </Button>
                  <Button onClick={() => setIsClearPositionsModalOpen(true)} variant="secondary" className="text-xs py-1 px-4 border-gray-200 dark:border-white/10 shadow-none">Reset Positions</Button>
               </div>
            </div>
 
            {/* Field Canvas - Taller on mobile (9/16) to prevent overlap */}
-           <div className="relative bg-green-600 rounded-2xl w-full aspect-[9/16] md:aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8">
+           <div className="relative bg-green-600 rounded-2xl w-full aspect-[9/16] md:aspect-[2/3] max-w-lg mx-auto overflow-hidden shadow-inner border-4 border-white shrink-0 mb-8 print:border-2">
               {[10, 20, 30, 40, 50, 60, 70, 80, 90].map(line => (
                 <div key={line} className={`absolute left-0 w-full h-px ${line === 50 ? 'bg-white' : 'bg-white/50'}`} style={{ top: `${line}%` }}></div>
               ))}
@@ -294,7 +332,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
            </div>
 
            <div className="mt-4 pt-6 border-t border-gray-100 dark:border-white/5 print:border-black">
-              <h4 className="text-sm font-heading font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center print:text-black">Substitutes & 18th Man</h4>
+              <h4 className="text-sm font-heading font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center">Substitutes & 18th Man</h4>
               
               <div className="flex flex-wrap justify-center gap-x-4 sm:gap-x-8 gap-y-6">
                  <div className="flex gap-2 sm:gap-4">
@@ -310,7 +348,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                              </div>
                              <div className="mt-1 flex flex-col items-center min-h-[24px] sm:min-h-[30px] max-w-[50px] sm:max-w-[60px]">
                                 {nameParts.map((part, idx) => (
-                                   <span key={idx} className={`text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black ${!rawName ? 'invisible' : ''}`}>{part}</span>
+                                   <span key={idx} className={`text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full ${!rawName ? 'invisible' : ''}`}>{part}</span>
                                 ))}
                              </div>
                           </div>
@@ -318,16 +356,16 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                     })}
                  </div>
 
-                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 print:bg-black hidden sm:block"></div>
+                 <div className="w-px h-10 bg-gray-200 dark:bg-white/10 hidden sm:block"></div>
 
                  <div className="flex flex-col items-center group cursor-pointer" onClick={() => setSelectingJersey('18')}>
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/20 rounded-lg flex items-center justify-center text-white font-bold shadow transition-all group-hover:scale-110 ring-2 ring-indigo-500/20 ${!assignments.find(a => a.jersey === '18')?.squadId ? 'opacity-30 bg-gray-600' : ''}`} style={{ background: assignments.find(a => a.jersey === '18')?.squadId ? getJerseyBackground() : undefined }}>
                        <span className={`text-[8px] sm:text-xs ${assignments.find(a => a.jersey === '18')?.squadId && primaryColor === '#FFFFFF' ? 'text-gray-900' : 'text-white'}`}>18</span>
                     </div>
-                    <span className="text-[6px] sm:text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5 print:text-black">18th Man</span>
+                    <span className="text-[6px] sm:text-[7px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5">18th Man</span>
                     <div className="mt-0.5 flex flex-col items-center min-h-[24px] sm:min-h-[30px] max-w-[60px]">
                        {getPlayerName(assignments.find(a => a.jersey === '18')?.squadId || null)?.split(' ').map((part, idx) => (
-                          <span key={idx} className="text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full print:text-black">{part}</span>
+                          <span key={idx} className="text-[6px] sm:text-[8px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-tighter text-center truncate w-full">{part}</span>
                        ))}
                     </div>
                  </div>
@@ -335,18 +373,18 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
            </div>
 
            {selectingJersey && (
-              <div className="absolute inset-0 z-40 p-12 animate-in fade-in duration-300 flex items-center justify-center print:hidden">
+              <div className="absolute inset-0 z-40 p-12 animate-in fade-in duration-300 flex items-center justify-center print-hide">
                  <div className="absolute inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-md rounded-3xl" onClick={() => setSelectingJersey(null)}></div>
                  <div className="relative z-50 bg-white dark:bg-[#1A1A1C] border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl p-6 max-h-[80%] w-full max-w-sm flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                       <h4 className="text-xl font-heading font-bold">Assign Jersey #{selectingJersey}</h4>
+                       <h4 className="text-xl font-heading font-bold text-slate-900 dark:text-white">Assign Jersey #{selectingJersey}</h4>
                        <button onClick={() => setSelectingJersey(null)} className="text-gray-400 text-xl font-black">✕</button>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-2">
                        <div onClick={() => assignPlayer(selectingJersey, null)} className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl font-bold text-red-500 cursor-pointer border border-transparent hover:border-red-500/30 text-center transition-all">Clear Position</div>
                        {getUnassignedAvailable().map(p => (
-                          <div key={p.id} onClick={() => assignPlayer(selectingJersey, p.id)} className="p-4 bg-white dark:bg-white/10 rounded-2xl font-bold cursor-pointer border border-gray-100 dark:border-white/5 hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all">{p.name}</div>
+                          <div key={p.id} onClick={() => assignPlayer(selectingJersey, p.id)} className="p-4 bg-white dark:bg-white/10 rounded-2xl font-bold cursor-pointer border border-gray-100 dark:border-white/5 hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all text-slate-900 dark:text-white">{p.name}</div>
                        ))}
                        {getUnassignedAvailable().length === 0 && <p className="text-center text-gray-500 py-8 italic text-sm">No unassigned available players.</p>}
                     </div>
