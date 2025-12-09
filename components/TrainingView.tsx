@@ -20,6 +20,7 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'stats' | 'history'>('stats');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingAttendeesSessionId, setViewingAttendeesSessionId] = useState<string | null>(null);
 
   // Form State
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -84,11 +85,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
   const handleQuickAddPlayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerName.trim()) return;
-
-    // We can't immediately get the ID of the new player since onAddSquadPlayer is void and async in nature (state update).
-    // However, for this UI, we can call the parent add function.
-    // The user will have to select them after they appear, or we implement a more complex callback.
-    // For simplicity: Add to squad, then clear input. The user will see them appear in the list.
     onAddSquadPlayer({ name: newPlayerName, position: 'Training Add' });
     setNewPlayerName('');
   };
@@ -105,12 +101,20 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
     setSessionDate(new Date().toISOString().split('T')[0]);
   };
 
+  const selectedViewSession = useMemo(() => {
+    return history.find(s => s.id === viewingAttendeesSessionId);
+  }, [history, viewingAttendeesSessionId]);
+
+  const viewingSessionAttendees = useMemo(() => {
+    if (!selectedViewSession) return [];
+    return squad.filter(p => selectedViewSession.attendeeIds.includes(p.id));
+  }, [squad, selectedViewSession]);
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* New Session Action */}
         <div 
           onClick={() => setIsModalOpen(true)}
           className="group bg-slate-900 dark:bg-white rounded-3xl p-6 shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all duration-300 cursor-pointer border border-transparent hover:scale-[1.01] flex flex-col justify-between text-white dark:text-slate-900 h-full min-h-[160px]"
@@ -126,7 +130,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
           </div>
         </div>
 
-        {/* Total Sessions Stats */}
         <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col justify-center">
            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Total Sessions</span>
            <span className="text-4xl font-heading font-black text-slate-900 dark:text-white">{history.length}</span>
@@ -136,7 +139,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
            </div>
         </div>
 
-        {/* Avg Attendance */}
         <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col justify-center">
            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Avg. Attendance</span>
            <span className="text-4xl font-heading font-black text-slate-900 dark:text-white">{avgAttendance}</span>
@@ -144,7 +146,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-white/10">
         <button
           onClick={() => setActiveTab('stats')}
@@ -168,7 +169,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
         </button>
       </div>
 
-      {/* Content */}
       <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden min-h-[400px]">
         {activeTab === 'stats' && (
           <div className="overflow-x-auto">
@@ -215,7 +215,7 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                 <div className="text-center py-12 text-gray-400">No sessions logged yet.</div>
              ) : (
                history.map(session => (
-                 <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                 <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 group">
                     <div>
                        <div className="flex items-center space-x-3 mb-1">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">{new Date(session.date).toLocaleDateString()}</span>
@@ -227,14 +227,26 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                        </div>
                        <p className="text-xs text-gray-500 dark:text-gray-400">{session.attendeeIds.length} Attendees</p>
                     </div>
-                    <button 
-                       onClick={() => {
-                          if (window.confirm("Delete this session?")) onDeleteSession(session.id);
-                       }}
-                       className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+                    <div className="flex items-center space-x-1">
+                       <button 
+                          onClick={() => setViewingAttendeesSessionId(session.id)}
+                          className="p-2 text-gray-400 hover:text-blue-500 transition-colors bg-white dark:bg-white/5 rounded-lg border border-transparent hover:border-blue-200 shadow-sm"
+                          title="View Attendees"
+                       >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                       </button>
+                       <button 
+                          onClick={() => {
+                             if (window.confirm("Delete this session?")) onDeleteSession(session.id);
+                          }}
+                          className="p-2 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete Session"
+                       >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                       </button>
+                    </div>
                  </div>
                ))
              )}
@@ -242,12 +254,46 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
         )}
       </div>
 
+      {/* View Attendees Modal */}
+      {viewingAttendeesSessionId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setViewingAttendeesSessionId(null)} />
+           <div className="relative bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl max-w-sm w-full max-h-[70vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-white/10">
+              <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
+                 <div>
+                    <h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white">Attendees</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedViewSession ? new Date(selectedViewSession.date).toLocaleDateString() : ''}</p>
+                 </div>
+                 <button onClick={() => setViewingAttendeesSessionId(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                 </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+                 {viewingSessionAttendees.length === 0 ? (
+                    <p className="text-center text-gray-400 py-8 text-sm italic">No attendees found.</p>
+                 ) : (
+                    viewingSessionAttendees.map(p => (
+                       <div key={p.id} className="flex items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                          <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center mr-3 shadow-sm border border-gray-100 dark:border-white/5">
+                             <span className="text-[10px] font-bold text-indigo-500">#</span>
+                          </div>
+                          <span className="text-sm font-bold text-slate-800 dark:text-gray-200">{p.name}</span>
+                       </div>
+                    ))
+                 )}
+              </div>
+              <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex justify-center">
+                 <Button variant="secondary" onClick={() => setViewingAttendeesSessionId(null)} className="w-full text-xs">Close List</Button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Log Session Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
           <div className="relative bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header */}
             <div className="p-6 border-b border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
                <h2 className="text-xl font-heading font-bold text-slate-900 dark:text-white">Log Training Session</h2>
                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -255,7 +301,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -304,7 +349,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                  </div>
                </div>
 
-               {/* Quick Add Player */}
                <div className="border-t border-gray-100 dark:border-white/10 pt-4">
                  <label className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Add New Player</label>
                  <div className="flex space-x-2">
@@ -323,7 +367,6 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
                </div>
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-end space-x-3">
                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                <Button onClick={handleSubmitSession} className="bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800">Log Session</Button>

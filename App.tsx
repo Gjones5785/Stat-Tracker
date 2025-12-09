@@ -9,7 +9,8 @@ import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { MatchCharts } from './components/MatchCharts';
-import { MatchEventLog } from './components/MatchEventLog'; // Imported new component
+import { MatchEventLog } from './components/MatchEventLog';
+import { MatchPlanner } from './components/MatchPlanner'; // New import
 import { Button } from './components/Button';
 import { 
   Player, 
@@ -64,7 +65,6 @@ export const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      // Initial fallback to auth profile or email
       if (u) {
         setUserDisplay(u.displayName || u.email?.split('@')[0] || 'Coach');
       }
@@ -73,31 +73,20 @@ export const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // --- USER PROFILE LISTENER (Fix for Username Display) ---
   useEffect(() => {
     if (!user) return;
-    
-    // Listen to the user's profile document in Firestore
     const profileRef = doc(db, 'users', user.uid);
     const unsubProfile = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        
-        // Priority: Database Username -> Auth Profile Name -> Email Prefix
-        if (data.username) {
-          setUserDisplay(data.username);
-        } else if (user.displayName) {
-          setUserDisplay(user.displayName);
-        } else {
-          setUserDisplay(user.email?.split('@')[0] || 'Coach');
-        }
+        if (data.username) setUserDisplay(data.username);
+        else if (user.displayName) setUserDisplay(user.displayName);
+        else setUserDisplay(user.email?.split('@')[0] || 'Coach');
 
-        // Also sync other profile settings if they exist
         if (data.clubName) localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', data.clubName);
         if (data.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', data.logo);
       }
     });
-    
     return () => unsubProfile();
   }, [user]);
 
@@ -121,8 +110,6 @@ export const App: React.FC = () => {
 
     const matchesRef = collection(db, 'users', user.uid, 'matches');
     const unsubMatches = onSnapshot(query(matchesRef, orderBy('date', 'desc')), (snap) => {
-        // IMPORTANT: Spread data first, then overwrite ID with doc.id.
-        // This ensures the ID used for deletion is the Firestore Document ID, not an internal ID field.
         setMatchHistory(snap.docs.map(d => ({ ...d.data(), id: d.id } as MatchHistoryItem)));
     });
 
@@ -140,8 +127,6 @@ export const App: React.FC = () => {
 
   // --- STATE: NAVIGATION & MATCH ---
   const [currentScreen, setCurrentScreen] = useState<'dashboard' | 'tracker'>('dashboard');
-  
-  // Active Match State
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [opponentName, setOpponentName] = useState('');
@@ -151,42 +136,21 @@ export const App: React.FC = () => {
   const [gameLog, setGameLog] = useState<GameLogEntry[]>([]);
   const [opponentScore, setOpponentScore] = useState(0);
   const [homeScoreAdjustment, setHomeScoreAdjustment] = useState(0);
-  
-  // New State: Set Completion
   const [setsCompleted, setSetsCompleted] = useState(0);
   const [totalSets, setTotalSets] = useState(0);
   
-  // Modals
   const [isTeamSelectOpen, setIsTeamSelectOpen] = useState(false);
   const [isEndHalfModalOpen, setIsEndHalfModalOpen] = useState(false);
   const [isEndMatchModalOpen, setIsEndMatchModalOpen] = useState(false);
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
-  
-  // Notification Modal (for Sin Bin Warning)
-  const [notificationConfig, setNotificationConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-  } | null>(null);
-
-  // Note Modal State (Penalties/Errors)
-  const [noteModalConfig, setNoteModalConfig] = useState<{
-    isOpen: boolean;
-    playerId: string;
-    stat: StatKey;
-    playerName: string;
-  } | null>(null);
-
-  // Card Assignment State
+  const [notificationConfig, setNotificationConfig] = useState<{ isOpen: boolean; title: string; message: string; } | null>(null);
+  const [noteModalConfig, setNoteModalConfig] = useState<{ isOpen: boolean; playerId: string; stat: StatKey; playerName: string; } | null>(null);
   const [cardType, setCardType] = useState<'yellow' | 'red' | null>(null);
   const [selectedCardPlayerId, setSelectedCardPlayerId] = useState<string>('');
-  
-  // Card Removal State
   const [removeCardId, setRemoveCardId] = useState<string | null>(null);
 
-  // Check for saved match on init
   useEffect(() => {
     const saved = localStorage.getItem('ACTIVE_MATCH_STATE');
     if (saved) {
@@ -198,7 +162,6 @@ export const App: React.FC = () => {
   const hasActiveMatch = !!activeMatchId;
 
   // --- ACTIONS ---
-
   const handleLogout = () => signOut(auth);
 
   const handleAddSquadPlayer = async (player: Omit<SquadPlayer, 'id' | 'createdAt'>) => {
@@ -235,35 +198,15 @@ export const App: React.FC = () => {
       await deleteDoc(doc(db, 'users', user.uid, 'matches', id));
   };
 
-  // Match Management
   const handleNewMatchClick = () => {
     setIsTeamSelectOpen(true);
   };
 
   const saveActiveState = useCallback((
-      p: Player[], 
-      t: number, 
-      per: '1st' | '2nd', 
-      log: GameLogEntry[], 
-      oppScore: number, 
-      oppName: string,
-      id: string,
-      sc: number, // setsCompleted
-      ts: number, // totalSets
-      hAdj: number // homeScoreAdjustment
+      p: Player[], t: number, per: '1st' | '2nd', log: GameLogEntry[], oppScore: number, oppName: string, id: string, sc: number, ts: number, hAdj: number
   ) => {
       localStorage.setItem('ACTIVE_MATCH_STATE', JSON.stringify({
-          players: p,
-          matchTime: t,
-          period: per,
-          gameLog: log,
-          opponentScore: oppScore,
-          opponentName: oppName,
-          id: id,
-          setsCompleted: sc,
-          totalSets: ts,
-          homeScoreAdjustment: hAdj,
-          date: new Date().toISOString()
+          players: p, matchTime: t, period: per, gameLog: log, opponentScore: oppScore, opponentName: oppName, id: id, setsCompleted: sc, totalSets: ts, homeScoreAdjustment: hAdj, date: new Date().toISOString()
       }));
   }, []);
 
@@ -281,7 +224,7 @@ export const App: React.FC = () => {
             cardStatus: 'none',
             isOnField: isOnField,
             totalSecondsOnField: 0,
-            lastSubTime: isOnField ? 0 : undefined // Start timer for starters
+            lastSubTime: isOnField ? 0 : undefined
         };
     });
 
@@ -299,9 +242,7 @@ export const App: React.FC = () => {
     setHomeScoreAdjustment(0);
     setActiveMatchId(newId);
     setIsTimerRunning(false);
-    
     saveActiveState(newPlayers, 0, '1st', [], 0, newOpponent, newId, 0, 0, 0);
-    
     setIsTeamSelectOpen(false);
     setCurrentScreen('tracker');
   };
@@ -324,15 +265,11 @@ export const App: React.FC = () => {
       }
   };
 
-  const handleDiscardActiveMatch = () => {
-      setIsDiscardModalOpen(true);
-  };
-  
+  const handleDiscardActiveMatch = () => setIsDiscardModalOpen(true);
   const onConfirmDiscard = () => {
       localStorage.removeItem('ACTIVE_MATCH_STATE');
       setActiveMatchId(null); 
       setCurrentScreen('dashboard');
-      // Reset State
       setPlayers([]);
       setMatchTime(0);
       setGameLog([]);
@@ -344,26 +281,18 @@ export const App: React.FC = () => {
       setIsDiscardModalOpen(false);
     };
   
-  // Timer Logic
   useEffect(() => {
     let interval: any;
     if (isTimerRunning) {
-      interval = setInterval(() => {
-        setMatchTime(prev => prev + 1);
-      }, 1000);
+      interval = setInterval(() => setMatchTime(prev => prev + 1), 1000);
     }
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
-  // --- SIN BIN WARNING LOGIC ---
   useEffect(() => {
-    // Check every second (when matchTime updates) if any player has hit the 9-minute mark
     players.forEach(p => {
       if (p.cardStatus === 'yellow' && p.sinBinStartTime !== undefined) {
-        const elapsed = matchTime - p.sinBinStartTime;
-        // 9 minutes = 540 seconds
-        // Only trigger exactly at 540 to avoid spamming, assuming timer increments by 1
-        if (elapsed === 540) {
+        if (matchTime - p.sinBinStartTime === 540) {
           setNotificationConfig({
             isOpen: true,
             title: 'Sin Bin Warning',
@@ -374,14 +303,12 @@ export const App: React.FC = () => {
     });
   }, [matchTime, players]);
 
-  // Persist state when meaningful changes occur
   useEffect(() => {
       if (currentScreen === 'tracker' && activeMatchId) {
           saveActiveState(players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, setsCompleted, totalSets, homeScoreAdjustment);
       }
   }, [players, matchTime, period, gameLog, opponentScore, opponentName, activeMatchId, currentScreen, saveActiveState, setsCompleted, totalSets, homeScoreAdjustment]);
 
-  // --- TIMER GUARD ---
   const checkTimerActive = () => {
     if (!isTimerRunning) {
       alert("Please start the match timer to record statistics and events.");
@@ -390,8 +317,6 @@ export const App: React.FC = () => {
     return true;
   };
 
-  // --- STATS HANDLERS ---
-  
   const updatePlayerStatsState = (playerId: string, stat: StatKey, delta: number) => {
      setPlayers(prev => prev.map(p => {
         if (p.id === playerId) {
@@ -403,53 +328,22 @@ export const App: React.FC = () => {
   };
 
   const handleStatChange = (playerId: string, stat: StatKey, delta: number) => {
-     // Enforce Timer
      if (!checkTimerActive()) return;
-
-     // Intercept Penalties and Errors for Note Popup (only when incrementing)
      if (delta > 0 && (stat === 'penaltiesConceded' || stat === 'errors')) {
        const p = players.find(pl => pl.id === playerId);
        if (p) {
-         setNoteModalConfig({
-           isOpen: true,
-           playerId,
-           stat,
-           playerName: p.name
-         });
+         setNoteModalConfig({ isOpen: true, playerId, stat, playerName: p.name });
        }
-       return; // Stop here, wait for modal
+       return;
      }
-     
-     // Normal Update
      updatePlayerStatsState(playerId, stat, delta);
-
-     // Log Significant Positive Stats (Tries, Kicks)
      if (delta > 0) {
         const player = players.find(p => p.id === playerId);
         if (player) {
            if (stat === 'triesScored') {
-              setGameLog(prev => [...prev, {
-                  id: Date.now().toString(),
-                  timestamp: matchTime,
-                  formattedTime: formatTime(matchTime),
-                  playerId: player.id,
-                  playerName: player.name,
-                  playerNumber: player.number,
-                  type: 'try',
-                  period
-              }]);
+              setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: 'try', period }]);
            } else if (stat === 'kicks') {
-              setGameLog(prev => [...prev, {
-                  id: Date.now().toString(),
-                  timestamp: matchTime,
-                  formattedTime: formatTime(matchTime),
-                  playerId: player.id,
-                  playerName: player.name,
-                  playerNumber: player.number,
-                  type: 'other', // or 'kick' if type updated
-                  reason: 'Kick / Conversion',
-                  period
-              }]);
+              setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: 'other', reason: 'Kick / Conversion', period }]);
            }
         }
      }
@@ -457,28 +351,12 @@ export const App: React.FC = () => {
 
   const handleNoteSubmit = (note: string, location?: string) => {
     if (noteModalConfig) {
-      // 1. Update the stat
       updatePlayerStatsState(noteModalConfig.playerId, noteModalConfig.stat, 1);
-      
-      // 2. Log the event with reason
       const player = players.find(p => p.id === noteModalConfig.playerId);
       if (player) {
           const type = noteModalConfig.stat === 'penaltiesConceded' ? 'penalty' : 'error';
-          setGameLog(prev => [...prev, {
-              id: Date.now().toString(),
-              timestamp: matchTime,
-              formattedTime: formatTime(matchTime),
-              playerId: player.id,
-              playerName: player.name,
-              playerNumber: player.number,
-              type: type,
-              reason: note,
-              location: location,
-              period
-          }]);
+          setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: type, reason: note, location: location, period }]);
       }
-      
-      // 3. Close Modal
       setNoteModalConfig(null);
     }
   };
@@ -490,43 +368,15 @@ export const App: React.FC = () => {
       setIsCardModalOpen(true);
   };
 
-  // Wrappers for Opponent Score with Timer Guard
-  const handleOpponentScoreChange = (delta: number) => {
-    if (!checkTimerActive()) return;
-    setOpponentScore(prev => Math.max(0, prev + delta));
-  };
+  const handleOpponentScoreChange = (delta: number) => { if (!checkTimerActive()) return; setOpponentScore(prev => Math.max(0, prev + delta)); };
+  const handleHomeScoreChange = (delta: number) => { if (!checkTimerActive()) return; setHomeScoreAdjustment(prev => prev + delta); };
+  const handleSetIncrement = () => { if (!checkTimerActive()) return; setSetsCompleted(p => p + 1); setTotalSets(p => p + 1); };
+  const handleMissedSet = () => { if (!checkTimerActive()) return; setTotalSets(p => p + 1); };
+  const handleRemoveCard = (playerId: string) => { if (!checkTimerActive()) return; setRemoveCardId(playerId); };
   
-  // Wrapper for Home Score Manual Adjustment
-  const handleHomeScoreChange = (delta: number) => {
-    if (!checkTimerActive()) return;
-    setHomeScoreAdjustment(prev => prev + delta);
-  };
-
-  // Wrappers for Set Counter with Timer Guard
-  const handleSetIncrement = () => {
-    if (!checkTimerActive()) return;
-    setSetsCompleted(p => p + 1);
-    setTotalSets(p => p + 1);
-  };
-
-  const handleMissedSet = () => {
-    if (!checkTimerActive()) return;
-    setTotalSets(p => p + 1);
-  };
-  
-  const handleRemoveCard = (playerId: string) => {
-      if (!checkTimerActive()) return;
-      setRemoveCardId(playerId);
-  };
-  
-  // Helper to sort players: On Field (top) vs Off Field (bottom), then by Number
   const sortPlayers = (list: Player[]) => {
     return [...list].sort((a, b) => {
-      // If both are On or both are Off, sort by Jersey Number
-      if (!!a.isOnField === !!b.isOnField) {
-        return parseInt(a.number || '0') - parseInt(b.number || '0');
-      }
-      // Otherwise, On Field comes first
+      if (!!a.isOnField === !!b.isOnField) return parseInt(a.number || '0') - parseInt(b.number || '0');
       return a.isOnField ? -1 : 1;
     });
   };
@@ -535,19 +385,10 @@ export const App: React.FC = () => {
     if (removeCardId) {
       setPlayers(prev => {
           const updated = prev.map(p => {
-              if (p.id === removeCardId) {
-                  return {
-                      ...p,
-                      cardStatus: 'none',
-                      sinBinStartTime: undefined,
-                      isOnField: true, // Restore to field
-                      // Set start time for Played Time calculation
-                      lastSubTime: matchTime
-                  };
-              }
+              if (p.id === removeCardId) return { ...p, cardStatus: 'none', sinBinStartTime: undefined, isOnField: true, lastSubTime: matchTime };
               return p;
           });
-          return sortPlayers(updated); // Re-sort to put back in list
+          return sortPlayers(updated);
       });
       setRemoveCardId(null);
     }
@@ -557,85 +398,39 @@ export const App: React.FC = () => {
       setPlayers(prev => {
           const updated = prev.map(p => {
               if (p.id === playerId) {
-                  // Calculate time accumulated until this card
                   const sessionTime = p.lastSubTime !== undefined ? matchTime - p.lastSubTime : 0;
                   const newTotalTime = p.totalSecondsOnField + sessionTime;
-
                   return { 
-                      ...p, 
-                      cardStatus: cardType || 'none',
-                      isOnField: false, // Sent off/Bin -> Off field
-                      sinBinStartTime: cardType === 'yellow' ? matchTime : undefined, // Track time for Yellow
-                      // Update Played Time
-                      totalSecondsOnField: newTotalTime,
-                      lastSubTime: undefined
+                      ...p, cardStatus: cardType || 'none', isOnField: false, sinBinStartTime: cardType === 'yellow' ? matchTime : undefined, totalSecondsOnField: newTotalTime, lastSubTime: undefined
                   };
               }
               return p;
           });
-          return sortPlayers(updated); // Move to bottom
+          return sortPlayers(updated);
       });
-      
-      // Log event
       const player = players.find(p => p.id === playerId);
       if (player) {
-          setGameLog(prev => [...prev, {
-              id: Date.now().toString(),
-              timestamp: matchTime,
-              formattedTime: formatTime(matchTime),
-              playerId: player.id,
-              playerName: player.name,
-              playerNumber: player.number,
-              type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
-              reason,
-              period
-          }]);
+          setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: cardType === 'yellow' ? 'yellow_card' : 'red_card', reason, period }]);
       }
       setIsCardModalOpen(false);
   };
   
   const handleToggleFieldStatus = (playerId: string) => {
       if (!checkTimerActive()) return;
-      
       const player = players.find(p => p.id === playerId);
       if (player) {
           const action = player.isOnField ? 'Subbed Off' : 'Subbed On';
-          setGameLog(prev => [...prev, {
-              id: Date.now().toString(),
-              timestamp: matchTime,
-              formattedTime: formatTime(matchTime),
-              playerId: player.id,
-              playerName: player.name,
-              playerNumber: player.number,
-              type: 'substitution',
-              reason: action,
-              period
-          }]);
+          setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: 'substitution', reason: action, period }]);
       }
-
       setPlayers(prev => {
           const updated = prev.map(p => {
               if (p.id === playerId) {
                  const newStatus = !p.isOnField;
                  let newTotalTime = p.totalSecondsOnField;
                  let newLastSubTime = p.lastSubTime;
-
-                 if (newStatus) {
-                    // Subbing ON: Start tracking from now
-                    newLastSubTime = matchTime;
-                 } else {
-                    // Subbing OFF: Add accumulated time
-                    const sessionTime = p.lastSubTime !== undefined ? matchTime - p.lastSubTime : 0;
-                    newTotalTime += sessionTime;
-                    newLastSubTime = undefined;
-                 }
-
-                 return { 
-                    ...p, 
-                    isOnField: newStatus,
-                    totalSecondsOnField: newTotalTime,
-                    lastSubTime: newLastSubTime
-                 };
+                 if (newStatus) newLastSubTime = matchTime;
+                 else { const sessionTime = p.lastSubTime !== undefined ? matchTime - p.lastSubTime : 0; newTotalTime += sessionTime; newLastSubTime = undefined; }
+                 return { ...p, isOnField: newStatus, totalSecondsOnField: newTotalTime, lastSubTime: newLastSubTime };
               }
               return p;
           });
@@ -643,16 +438,8 @@ export const App: React.FC = () => {
       });
   };
   
-  const handleViewHistoryMatch = (match: MatchHistoryItem) => {
-      setViewingMatch(match);
-  };
-
-  // Helpers
-  const formatTime = (seconds: number) => {
-     const m = Math.floor(seconds / 60);
-     const s = seconds % 60;
-     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  const handleViewHistoryMatch = (match: MatchHistoryItem) => setViewingMatch(match);
+  const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60); const s = seconds % 60; return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; };
 
   const teamScore = Math.max(0, players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0) + homeScoreAdjustment);
   
@@ -664,29 +451,19 @@ export const App: React.FC = () => {
      (Object.keys(INITIAL_STATS) as StatKey[]).forEach(key => {
         const val = p.stats[key];
         teamTotals[key] += val;
-        if (val > maxValues[key]) {
-           maxValues[key] = val;
-           leaderCounts[key] = 1;
-        } else if (val === maxValues[key] && val > 0) {
-           leaderCounts[key]++;
-        }
+        if (val > maxValues[key]) { maxValues[key] = val; leaderCounts[key] = 1; }
+        else if (val === maxValues[key] && val > 0) { leaderCounts[key]++; }
      });
   });
   
-  // Logic for remove card message
   const getRemoveCardMessage = () => {
     const p = players.find(pl => pl.id === removeCardId);
-    if (p?.cardStatus === 'red') {
-      return "This will remove the Red Card and return the player to the field.";
-    }
+    if (p?.cardStatus === 'red') return "This will remove the Red Card and return the player to the field.";
     return "This will remove the Yellow Card, reset the Sin Bin timer, and return the player to the field.";
   };
 
   if (loadingAuth) return <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#0F0F10] text-gray-500">Loading LeagueLens...</div>;
-
-  if (!user) {
-    return <AuthScreen onLogin={() => {}} />; 
-  }
+  if (!user) return <AuthScreen onLogin={() => {}} />; 
 
   return (
     <>
@@ -712,115 +489,39 @@ export const App: React.FC = () => {
           onDeleteTrainingSession={handleDeleteTrainingSession}
         />
       ) : (
-         /* MATCH TRACKER VIEW */
          <div className="h-screen overflow-hidden bg-gray-100 dark:bg-[#0F0F10] flex flex-col font-sans">
-            {/* Header - No longer sticky, acts as top bar */}
             <header className="bg-white dark:bg-[#1A1A1C] border-b border-gray-200 dark:border-white/5 shadow-sm shrink-0">
                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-                  
-                  {/* BUNDLE 1: TIMER & PERIOD */}
-                  <div 
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                    className="bg-white dark:bg-[#1A1A1C] rounded-2xl px-5 py-2 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center min-w-[160px] shadow-sm cursor-pointer hover:border-blue-200 dark:hover:border-blue-900/50 transition-all group select-none"
-                  >
+                  <div onClick={() => setIsTimerRunning(!isTimerRunning)} className="bg-white dark:bg-[#1A1A1C] rounded-2xl px-5 py-2 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center min-w-[160px] shadow-sm cursor-pointer hover:border-blue-200 dark:hover:border-blue-900/50 transition-all group select-none">
                      <div className="flex items-center gap-3">
-                        {/* Status Dot */}
                         <div className="relative flex h-3 w-3 mt-1">
                           {isTimerRunning && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
                           <span className={`relative inline-flex rounded-full h-3 w-3 transition-colors duration-300 ${isTimerRunning ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></span>
                         </div>
-
-                        {/* Time */}
-                        <span className={`text-4xl font-heading font-medium tabular-nums tracking-tight leading-none transition-colors ${isTimerRunning ? 'text-slate-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>
-                           {formatTime(matchTime)}
-                        </span>
+                        <span className={`text-4xl font-heading font-medium tabular-nums tracking-tight leading-none transition-colors ${isTimerRunning ? 'text-slate-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>{formatTime(matchTime)}</span>
                      </div>
-                     
-                     {/* Period */}
-                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] ml-5">
-                       {period} Half
-                     </span>
+                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] ml-5">{period} Half</span>
                   </div>
 
-                  {/* BUNDLE 2: SCORES & SETS */}
                   <div className="flex-1 bg-gray-50 dark:bg-white/5 rounded-2xl px-4 py-3 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
-                     
-                     {/* Row 1: Scoreboard */}
                      <div className="flex items-center justify-center w-full mb-3 px-2">
-                         
-                         {/* HOME SIDE */}
                          <div className="flex-1 flex items-center justify-end min-w-0">
-                            {/* Team Name */}
-                            <span className="text-right text-sm font-bold text-gray-500 uppercase tracking-wider truncate flex-1 min-w-0 h-6 flex items-center justify-end">
-                                {localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'Team'}
-                            </span>
-                            
-                            {/* Score Block - Fixed Width for Symmetry */}
+                            <span className="text-right text-sm font-bold text-gray-500 uppercase tracking-wider truncate flex-1 min-w-0 h-6 flex items-center justify-end">{localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'Team'}</span>
                             <div className="relative w-32 flex items-center justify-center shrink-0 mx-2">
-                                {/* Minus Button */}
-                                <button 
-                                  onClick={() => handleHomeScoreChange(-1)} 
-                                  disabled={!isTimerRunning}
-                                  className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1"
-                                >
-                                  －
-                                </button>
-                                
-                                <span className="text-4xl font-heading font-black text-blue-600 dark:text-blue-400 tabular-nums leading-none">
-                                    {teamScore}
-                                </span>
-                                
-                                {/* Plus Button */}
-                                <button 
-                                  onClick={() => handleHomeScoreChange(1)} 
-                                  disabled={!isTimerRunning}
-                                  className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1"
-                                >
-                                  ＋
-                                </button>
+                                <button onClick={() => handleHomeScoreChange(-1)} disabled={!isTimerRunning} className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1">－</button>
+                                <span className="text-4xl font-heading font-black text-blue-600 dark:text-blue-400 tabular-nums leading-none">{teamScore}</span>
+                                <button onClick={() => handleHomeScoreChange(1)} disabled={!isTimerRunning} className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1">＋</button>
                             </div>
                          </div>
-
-                         {/* Divider */}
                          <div className="w-px h-8 bg-gray-200 dark:bg-white/10 mx-2 shrink-0"></div>
-
-                         {/* OPPONENT SIDE */}
                          <div className="flex-1 flex items-center justify-start min-w-0">
-                            {/* Score Block - Fixed Width for Symmetry */}
                             <div className="relative w-32 flex items-center justify-center shrink-0 mx-2">
-                                {/* Minus Button */}
-                                <button 
-                                  onClick={() => handleOpponentScoreChange(-1)} 
-                                  disabled={!isTimerRunning}
-                                  className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1"
-                                >
-                                  －
-                                </button>
-                                
-                                <span className={`text-4xl font-heading font-black text-slate-900 dark:text-white tabular-nums leading-none transition-opacity ${!isTimerRunning ? 'opacity-60' : ''}`}>
-                                    {opponentScore}
-                                </span>
-                                
-                                {/* Plus Button */}
-                                <button 
-                                  onClick={() => handleOpponentScoreChange(1)} 
-                                  disabled={!isTimerRunning}
-                                  className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1"
-                                >
-                                  ＋
-                                </button>
+                                <button onClick={() => handleOpponentScoreChange(-1)} disabled={!isTimerRunning} className="absolute left-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-0 p-1">－</button>
+                                <span className={`text-4xl font-heading font-black text-slate-900 dark:text-white tabular-nums leading-none transition-opacity ${!isTimerRunning ? 'opacity-60' : ''}`}>{opponentScore}</span>
+                                <button onClick={() => handleOpponentScoreChange(1)} disabled={!isTimerRunning} className="absolute right-0 text-gray-300 hover:text-green-500 transition-colors disabled:opacity-0 p-1">＋</button>
                             </div>
-
-                            {/* Opponent Name & Extras */}
                             <div className="flex-1 flex items-center min-w-0 gap-3">
-                                <input 
-                                    value={opponentName} 
-                                    onChange={(e) => setOpponentName(e.target.value)}
-                                    className="text-left text-sm font-bold text-gray-500 uppercase tracking-wider bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none transition-all placeholder-gray-300 w-full min-w-0 h-6" 
-                                    placeholder="OPPONENT"
-                                />
-                                
-                                {/* T/K Buttons */}
+                                <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} className="text-left text-sm font-bold text-gray-500 uppercase tracking-wider bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none transition-all placeholder-gray-300 w-full min-w-0 h-6" placeholder="OPPONENT"/>
                                 <div className={`flex flex-col space-y-1 transition-opacity shrink-0 ${!isTimerRunning ? 'opacity-40 pointer-events-none' : ''}`}>
                                     <button onClick={() => handleOpponentScoreChange(4)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-bold rounded hover:bg-blue-200 disabled:cursor-not-allowed w-5 flex items-center justify-center">T</button>
                                     <button onClick={() => handleOpponentScoreChange(2)} disabled={!isTimerRunning} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded hover:bg-slate-300 disabled:cursor-not-allowed w-5 flex items-center justify-center">K</button>
@@ -828,76 +529,35 @@ export const App: React.FC = () => {
                             </div>
                          </div>
                      </div>
-
-                     {/* Row 2: Sets Counter */}
                      <div className={`flex items-center space-x-3 bg-white dark:bg-white/10 px-4 py-1.5 rounded-full border border-gray-100 dark:border-white/5 shadow-sm transition-opacity ${!isTimerRunning ? 'opacity-50' : ''}`}>
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sets</span>
-                          <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                              {setsCompleted}/{totalSets}
-                          </span>
-                          <span className="text-[10px] font-medium text-gray-400 border-r border-gray-200 dark:border-white/10 pr-3 mr-1">
-                              {totalSets > 0 ? Math.round((setsCompleted / totalSets) * 100) : 0}%
-                          </span>
-                          
+                          <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">{setsCompleted}/{totalSets}</span>
+                          <span className="text-[10px] font-medium text-gray-400 border-r border-gray-200 dark:border-white/10 pr-3 mr-1">{totalSets > 0 ? Math.round((setsCompleted / totalSets) * 100) : 0}%</span>
                           <div className="flex space-x-1">
-                              <button 
-                                  onClick={handleSetIncrement}
-                                  disabled={!isTimerRunning}
-                                  className="w-5 h-5 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              >
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg>
-                              </button>
-                              <button 
-                                  onClick={handleMissedSet}
-                                  disabled={!isTimerRunning}
-                                  className="w-5 h-5 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              >
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg>
-                              </button>
+                              <button onClick={handleSetIncrement} disabled={!isTimerRunning} className="w-5 h-5 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg></button>
+                              <button onClick={handleMissedSet} disabled={!isTimerRunning} className="w-5 h-5 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg></button>
                           </div>
                      </div>
-
                   </div>
 
-                  {/* BUNDLE 3: ACTIONS */}
                   <div className="bg-gray-50 dark:bg-white/5 rounded-2xl px-4 py-3 border border-gray-200 dark:border-white/10 flex items-center space-x-3 shadow-sm min-h-[88px]">
-                     <Button 
-                        onClick={() => period === '1st' ? setIsEndHalfModalOpen(true) : setIsEndMatchModalOpen(true)}
-                        className="h-10 text-xs bg-red-600 hover:bg-red-700 text-white shadow-red-500/20 shadow-lg border-none"
-                     >
-                        {period === '1st' ? 'End 1st Half' : 'End Match'}
-                     </Button>
-                     <Button variant="secondary" onClick={() => setCurrentScreen('dashboard')} className="h-10 text-xs bg-white dark:bg-white/10 border border-gray-200 dark:border-white/5 shadow-sm">
-                        Back
-                     </Button>
+                     <Button onClick={() => period === '1st' ? setIsEndHalfModalOpen(true) : setIsEndMatchModalOpen(true)} className="h-10 text-xs bg-red-600 hover:bg-red-700 text-white shadow-red-500/20 shadow-lg border-none">{period === '1st' ? 'End 1st Half' : 'End Match'}</Button>
+                     <Button variant="secondary" onClick={() => setCurrentScreen('dashboard')} className="h-10 text-xs bg-white dark:bg-white/10 border border-gray-200 dark:border-white/5 shadow-sm">Back</Button>
                   </div>
                </div>
             </header>
 
-            {/* Timer Paused Banner - No longer sticky */}
             {!isTimerRunning && (
               <div className="bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800/50 px-4 py-2 text-center z-10 backdrop-blur-sm shrink-0">
-                 <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide flex items-center justify-center gap-2">
-                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                   </svg>
-                   Timer Paused • Start timer to record stats
-                 </p>
+                 <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide flex items-center justify-center gap-2"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Timer Paused • Start timer to record stats</p>
               </div>
             )}
 
-            {/* Players List - Scrollable Main Container 
-                UPDATED: padding-top removed (pt-0) so sticky headers hit the very top.
-                Vertical padding moved to margins/bottom to avoid gaps above sticky headers.
-            */}
             <main className="flex-1 overflow-auto px-4 md:px-6 pb-4 md:pb-6 pt-0 relative">
-              {/* UPDATED: Added top margin to container to provide visual spacing initially, 
-                  but allowing sticky header to slide up to the top edge when scrolling. */}
               <div className="min-w-[1000px] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-apple dark:shadow-none border border-gray-200 dark:border-white/5 mt-4 md:mt-6">
                  <table className="w-full">
                     <thead className="border-b border-gray-200 dark:border-white/5">
                        <tr>
-                          {/* UPDATED: Removed backdrop-blur and transparency. Made backgrounds solid to hide content scrolling behind. */}
                           <th className="p-3 text-left w-16 sticky left-0 top-0 z-50 bg-gray-50 dark:bg-[#1A1A1C] text-xs font-bold text-gray-500 uppercase tracking-wider pl-4">#</th>
                           <th className="p-3 text-left min-w-[160px] sticky left-[64px] top-0 z-50 bg-gray-50 dark:bg-[#1A1A1C] text-xs font-bold text-gray-500 uppercase tracking-wider">Player</th>
                           {Object.values(STAT_CONFIGS).map(cfg => (
@@ -907,168 +567,33 @@ export const App: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                        {players.map((p, i) => (
-                          <PlayerRow 
-                            key={p.id}
-                            player={p}
-                            isOdd={i % 2 !== 0}
-                            onStatChange={handleStatChange}
-                            onIdentityChange={(id, f, v) => {
-                               setPlayers(prev => prev.map(pl => pl.id === id ? { ...pl, [f]: v } : pl));
-                            }}
-                            onCardAction={handleCardAction}
-                            onRemoveCard={handleRemoveCard}
-                            onToggleFieldStatus={handleToggleFieldStatus}
-                            teamTotals={teamTotals}
-                            maxValues={maxValues}
-                            leaderCounts={leaderCounts}
-                            isReadOnly={!isTimerRunning}
-                          />
+                          <PlayerRow key={p.id} player={p} isOdd={i % 2 !== 0} onStatChange={handleStatChange} onIdentityChange={(id, f, v) => setPlayers(prev => prev.map(pl => pl.id === id ? { ...pl, [f]: v } : pl))} onCardAction={handleCardAction} onRemoveCard={handleRemoveCard} onToggleFieldStatus={handleToggleFieldStatus} teamTotals={teamTotals} maxValues={maxValues} leaderCounts={leaderCounts} isReadOnly={!isTimerRunning} />
                        ))}
                     </tbody>
                  </table>
               </div>
-
-              {/* Match Event Log Dropdown */}
               <div className="max-w-4xl mx-auto">
                 <MatchEventLog events={gameLog} />
               </div>
             </main>
 
-            {/* Static Action Bar for Cards - No longer sticky to body, sits at bottom of flex */}
             <div className="bg-white dark:bg-[#1A1A1C] border-t border-gray-200 dark:border-white/5 p-4 z-30 pb-safe shrink-0">
               <div className="max-w-4xl mx-auto flex items-center justify-center space-x-4">
-                <Button 
-                  onClick={() => handleCardAction('', 'yellow')}
-                  disabled={!isTimerRunning}
-                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border border-yellow-500 font-bold text-xs uppercase tracking-wide max-w-[180px] shadow-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400"
-                >
-                  Issue Yellow Card
-                </Button>
-                <Button 
-                  onClick={() => handleCardAction('', 'red')}
-                  disabled={!isTimerRunning}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white border border-red-700 font-bold text-xs uppercase tracking-wide max-w-[180px] shadow-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400"
-                >
-                  Issue Red Card
-                </Button>
+                <Button onClick={() => handleCardAction('', 'yellow')} disabled={!isTimerRunning} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 border border-yellow-500 font-bold text-xs uppercase tracking-wide max-w-[180px] shadow-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400">Issue Yellow Card</Button>
+                <Button onClick={() => handleCardAction('', 'red')} disabled={!isTimerRunning} className="flex-1 bg-red-600 hover:bg-red-700 text-white border border-red-700 font-bold text-xs uppercase tracking-wide max-w-[180px] shadow-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400">Issue Red Card</Button>
               </div>
             </div>
          </div>
       )}
 
-      {/* --- MODALS --- */}
-      
-      <TeamSelectionModal 
-        isOpen={isTeamSelectOpen}
-        squad={squad}
-        onConfirm={handleStartMatch}
-        onCancel={() => setIsTeamSelectOpen(false)}
-      />
-
-      <ConfirmationModal 
-         isOpen={isEndHalfModalOpen}
-         title="End First Half?"
-         message="This will pause the timer and switch the period to 2nd Half."
-         onConfirm={() => {
-            setPeriod('2nd');
-            setIsTimerRunning(false);
-            setIsEndHalfModalOpen(false);
-         }}
-         onCancel={() => setIsEndHalfModalOpen(false)}
-      />
-
-      <ConfirmationModal 
-         isOpen={isEndMatchModalOpen}
-         title="End Match?"
-         message="This will finalize all stats and save the game to history."
-         onConfirm={async () => {
-             if (user) {
-                 // Finalize time on field for players currently ON
-                 const finalizedPlayers = players.map(p => {
-                     if (p.isOnField && p.lastSubTime !== undefined) {
-                         const sessionTime = matchTime - p.lastSubTime;
-                         return { 
-                             ...p, 
-                             totalSecondsOnField: p.totalSecondsOnField + sessionTime 
-                         };
-                     }
-                     return p;
-                 });
-                 
-                 // Use these updated players for saving
-                 const rawData = {
-                     players: finalizedPlayers,
-                     gameLog,
-                     matchTime,
-                     setsCompleted,
-                     totalSets,
-                     homeScoreAdjustment,
-                     fullMatchStats: finalizedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {})
-                 };
-                 
-                 // Sanitize undefined values (Firestore doesn't accept undefined)
-                 const cleanData = JSON.parse(JSON.stringify(rawData));
-
-                 const historyItem: MatchHistoryItem = {
-                     id: activeMatchId || Date.now().toString(),
-                     date: new Date().toISOString().split('T')[0],
-                     teamName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team',
-                     opponentName: opponentName || 'Opponent',
-                     finalScore: `${teamScore} - ${opponentScore}`,
-                     result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
-                     data: cleanData
-                 };
-                 await addDoc(collection(db, 'users', user.uid, 'matches'), historyItem);
-                 
-                 localStorage.removeItem('ACTIVE_MATCH_STATE');
-                 setActiveMatchId(null);
-                 setCurrentScreen('dashboard');
-             }
-             setIsEndMatchModalOpen(false);
-         }}
-         onCancel={() => setIsEndMatchModalOpen(false)}
-      />
-
-      <ConfirmationModal 
-         isOpen={isDiscardModalOpen}
-         title="Discard Active Match?"
-         message="Are you sure you want to discard the current live match? This action cannot be undone and all data will be lost."
-         onConfirm={onConfirmDiscard}
-         onCancel={() => setIsDiscardModalOpen(false)}
-      />
-      
-      <ConfirmationModal 
-         isOpen={!!removeCardId}
-         title="Remove Card?"
-         message={getRemoveCardMessage()}
-         onConfirm={confirmRemoveCard}
-         onCancel={() => setRemoveCardId(null)}
-      />
-
-      <CardAssignmentModal
-        isOpen={isCardModalOpen}
-        type={cardType}
-        players={players}
-        onConfirm={confirmCardAssignment}
-        onCancel={() => setIsCardModalOpen(false)}
-      />
-
-      <NoteModal
-         isOpen={noteModalConfig?.isOpen || false}
-         title={noteModalConfig?.stat === 'penaltiesConceded' ? 'Penalty Reason' : 'Error Reason'}
-         playerName={noteModalConfig?.playerName || ''}
-         showLocation={true}
-         onSubmit={handleNoteSubmit}
-         onClose={() => setNoteModalConfig(null)}
-      />
-      
-      {/* Notification Modal for Sin Bin */}
-      <NotificationModal 
-        isOpen={notificationConfig?.isOpen || false}
-        title={notificationConfig?.title || ''}
-        message={notificationConfig?.message || ''}
-        onClose={() => setNotificationConfig(null)}
-      />
+      <TeamSelectionModal isOpen={isTeamSelectOpen} squad={squad} onConfirm={handleStartMatch} onCancel={() => setIsTeamSelectOpen(false)} />
+      <ConfirmationModal isOpen={isEndHalfModalOpen} title="End First Half?" message="This will pause the timer and switch the period to 2nd Half." onConfirm={() => { setPeriod('2nd'); setIsTimerRunning(false); setIsEndHalfModalOpen(false); }} onCancel={() => setIsEndHalfModalOpen(false)} />
+      <ConfirmationModal isOpen={isEndMatchModalOpen} title="End Match?" message="This will finalize all stats and save the game to history." onConfirm={async () => { if (user) { const finalizedPlayers = players.map(p => { if (p.isOnField && p.lastSubTime !== undefined) { const sessionTime = matchTime - p.lastSubTime; return { ...p, totalSecondsOnField: p.totalSecondsOnField + sessionTime }; } return p; }); const rawData = { players: finalizedPlayers, gameLog, matchTime, setsCompleted, totalSets, homeScoreAdjustment, fullMatchStats: finalizedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {}) }; const cleanData = JSON.parse(JSON.stringify(rawData)); const historyItem: MatchHistoryItem = { id: activeMatchId || Date.now().toString(), date: new Date().toISOString().split('T')[0], teamName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team', opponentName: opponentName || 'Opponent', finalScore: `${teamScore} - ${opponentScore}`, result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw', data: cleanData }; await addDoc(collection(db, 'users', user.uid, 'matches'), historyItem); localStorage.removeItem('ACTIVE_MATCH_STATE'); setActiveMatchId(null); setCurrentScreen('dashboard'); } setIsEndMatchModalOpen(false); }} onCancel={() => setIsEndMatchModalOpen(false)} />
+      <ConfirmationModal isOpen={isDiscardModalOpen} title="Discard Active Match?" message="Are you sure you want to discard the current live match? This action cannot be undone and all data will be lost." onConfirm={onConfirmDiscard} onCancel={() => setIsDiscardModalOpen(false)} />
+      <ConfirmationModal isOpen={!!removeCardId} title="Remove Card?" message={getRemoveCardMessage()} onConfirm={confirmRemoveCard} onCancel={() => setRemoveCardId(null)} />
+      <CardAssignmentModal isOpen={isCardModalOpen} type={cardType} players={players} onConfirm={confirmCardAssignment} onCancel={() => setIsCardModalOpen(false)} />
+      <NoteModal isOpen={noteModalConfig?.isOpen || false} title={noteModalConfig?.stat === 'penaltiesConceded' ? 'Penalty Reason' : 'Error Reason'} playerName={noteModalConfig?.playerName || ''} showLocation={true} onSubmit={handleNoteSubmit} onClose={() => setNoteModalConfig(null)} />
+      <NotificationModal isOpen={notificationConfig?.isOpen || false} title={notificationConfig?.title || ''} message={notificationConfig?.message || ''} onClose={() => setNotificationConfig(null)} />
 
       {viewingMatch && (
          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -1078,16 +603,7 @@ export const App: React.FC = () => {
                   <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Match Analysis</h2>
                   <button onClick={() => setViewingMatch(null)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">✕</button>
                </div>
-               <MatchCharts matchData={{
-                  players: viewingMatch.data.players || [], 
-                  leftScore: parseInt(viewingMatch.finalScore.split('-')[0]),
-                  rightScore: parseInt(viewingMatch.finalScore.split('-')[1]),
-                  possessionSeconds: (viewingMatch.data.matchTime || 0) * 0.5, 
-                  matchTime: viewingMatch.data.matchTime || 0,
-                  teamName: viewingMatch.teamName,
-                  opponentName: viewingMatch.opponentName,
-                  gameLog: viewingMatch.data.gameLog || []
-               }} />
+               <MatchCharts matchData={{ players: viewingMatch.data.players || [], leftScore: parseInt(viewingMatch.finalScore.split('-')[0]), rightScore: parseInt(viewingMatch.finalScore.split('-')[1]), possessionSeconds: (viewingMatch.data.matchTime || 0) * 0.5, matchTime: viewingMatch.data.matchTime || 0, teamName: viewingMatch.teamName, opponentName: viewingMatch.opponentName, gameLog: viewingMatch.data.gameLog || [] }} />
             </div>
          </div>
       )}
