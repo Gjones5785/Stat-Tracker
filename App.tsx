@@ -19,7 +19,8 @@ import {
   MatchHistoryItem, 
   SquadPlayer, 
   TrainingSession,
-  GameLogEntry 
+  GameLogEntry,
+  PlaybookItem 
 } from './types';
 import { INITIAL_STATS, STAT_CONFIGS, TEAM_SIZE } from './constants';
 import { auth, db } from './firebase';
@@ -96,12 +97,14 @@ export const App: React.FC = () => {
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
   const [matchHistory, setMatchHistory] = useState<MatchHistoryItem[]>([]);
   const [trainingHistory, setTrainingHistory] = useState<TrainingSession[]>([]);
+  const [playbook, setPlaybook] = useState<PlaybookItem[]>([]);
 
   useEffect(() => {
     if (!user) {
         setSquad([]);
         setMatchHistory([]);
         setTrainingHistory([]);
+        setPlaybook([]);
         return;
     }
 
@@ -120,10 +123,16 @@ export const App: React.FC = () => {
         setTrainingHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingSession)));
     });
 
+    const playbookRef = collection(db, 'users', user.uid, 'playbook');
+    const unsubPlaybook = onSnapshot(query(playbookRef, orderBy('createdAt', 'desc')), (snap) => {
+        setPlaybook(snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem)));
+    });
+
     return () => {
         unsubSquad();
         unsubMatches();
         unsubTraining();
+        unsubPlaybook();
     };
   }, [user]);
 
@@ -205,6 +214,16 @@ export const App: React.FC = () => {
   const handleDeleteTrainingSession = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'training', id));
+  };
+
+  const handleAddPlaybookItem = async (item: Omit<PlaybookItem, 'id'>) => {
+      if (!user) return;
+      await addDoc(collection(db, 'users', user.uid, 'playbook'), item);
+  };
+
+  const handleDeletePlaybookItem = async (id: string) => {
+      if (!user) return;
+      await deleteDoc(doc(db, 'users', user.uid, 'playbook', id));
   };
 
   const handleDeleteHistoryMatch = async (id: string) => {
@@ -502,6 +521,9 @@ export const App: React.FC = () => {
           onSaveTrainingSession={handleSaveTrainingSession}
           onUpdateTrainingSession={handleUpdateTrainingSession}
           onDeleteTrainingSession={handleDeleteTrainingSession}
+          playbook={playbook}
+          onAddPlaybookItem={handleAddPlaybookItem}
+          onDeletePlaybookItem={handleDeletePlaybookItem}
         />
       ) : (
          <div className="h-screen overflow-hidden bg-gray-100 dark:bg-[#0F0F10] flex flex-col font-sans">

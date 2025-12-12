@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { MatchHistoryItem, SquadPlayer, TrainingSession } from '../types';
+import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem } from '../types';
 import { SquadStatsView } from './SquadStatsView';
 import { TrainingView } from './TrainingView';
 import { MatchPlanner } from './MatchPlanner';
+import { LeagueHubView } from './LeagueHubView';
 import { ConfirmationModal } from './ConfirmationModal';
 
 interface DashboardProps {
@@ -27,6 +28,9 @@ interface DashboardProps {
   onSaveTrainingSession?: (session: Omit<TrainingSession, 'id'>) => void;
   onUpdateTrainingSession?: (id: string, updates: Partial<TrainingSession>) => void;
   onDeleteTrainingSession?: (id: string) => void;
+  playbook?: PlaybookItem[];
+  onAddPlaybookItem?: (item: Omit<PlaybookItem, 'id'>) => void;
+  onDeletePlaybookItem?: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -48,9 +52,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   trainingHistory = [],
   onSaveTrainingSession = () => {},
   onUpdateTrainingSession = () => {},
-  onDeleteTrainingSession = () => {}
+  onDeleteTrainingSession = () => {},
+  playbook = [],
+  onAddPlaybookItem = () => {},
+  onDeletePlaybookItem = () => {}
 }) => {
-  const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner'>('matches');
+  const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   
   // RESET SCROLL ON TAB CHANGE
   useEffect(() => {
@@ -129,18 +136,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-center mb-10">
-          <div className="bg-gray-200/50 dark:bg-white/5 p-1 rounded-full inline-flex relative flex-wrap justify-center">
-            {['matches', 'squad', 'training', 'planner'].map((tab) => (
+          <div className="bg-gray-200/50 dark:bg-white/5 p-1 rounded-full inline-flex relative flex-wrap justify-center overflow-x-auto max-w-full">
+            {['matches', 'squad', 'training', 'planner', 'hub'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setCurrentTab(tab as any)}
-                className={`relative z-10 px-6 sm:px-8 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 capitalize ${
+                className={`relative z-10 px-5 sm:px-6 py-2 rounded-full text-sm font-heading font-semibold transition-all duration-300 capitalize whitespace-nowrap ${
                   currentTab === tab 
                     ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
                     : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'
                 }`}
               >
-                {tab === 'matches' ? 'Matches' : tab === 'squad' ? 'Squad & Stats' : tab === 'training' ? 'Training' : 'Planner'}
+                {tab === 'matches' ? 'Matches' : tab === 'squad' ? 'Squad' : tab === 'training' ? 'Training' : tab === 'planner' ? 'Planner' : 'Hub'}
               </button>
             ))}
           </div>
@@ -223,6 +230,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {currentTab === 'planner' && (
            <MatchPlanner squad={squad} />
+        )}
+
+        {currentTab === 'hub' && (
+           <LeagueHubView playbook={playbook} onAddPlaybookItem={onAddPlaybookItem} onDeletePlaybookItem={onDeletePlaybookItem} />
         )}
 
       </main>
