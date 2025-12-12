@@ -13,12 +13,15 @@ interface AssignedPlayer {
   squadId: string | null;
 }
 
+type UnavailableReason = 'Injured' | 'Away' | 'Suspended' | 'Other';
+
 const COLOR_OPTIONS = [
   '#2563EB', '#DC2626', '#16A34A', '#D97706', '#7C3AED', '#000000', '#FFFFFF', '#94A3B8'
 ];
 
 export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   const [availableIds, setAvailableIds] = useState<string[]>([]);
+  const [unavailableReasons, setUnavailableReasons] = useState<Record<string, UnavailableReason>>({});
   const [primaryColor, setPrimaryColor] = useState('#2563EB');
   const [secondaryColor, setSecondaryColor] = useState('#FACC15');
   const [useDualColor, setUseDualColor] = useState(false);
@@ -34,6 +37,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   const [selectingJersey, setSelectingJersey] = useState<string | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isClearPositionsModalOpen, setIsClearPositionsModalOpen] = useState(false);
+  const [lockSuccess, setLockSuccess] = useState(false);
 
   useEffect(() => {
     try {
@@ -42,6 +46,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
         const parsed = JSON.parse(saved);
         if (parsed.assignments) setAssignments(parsed.assignments);
         if (parsed.availableIds) setAvailableIds(parsed.availableIds);
+        if (parsed.unavailableReasons) setUnavailableReasons(parsed.unavailableReasons);
         if (parsed.primaryColor) setPrimaryColor(parsed.primaryColor);
         if (parsed.secondaryColor) setSecondaryColor(parsed.secondaryColor);
         if (parsed.useDualColor !== undefined) setUseDualColor(parsed.useDualColor);
@@ -55,21 +60,39 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     localStorage.setItem('MATCH_PLANNER_DRAFT', JSON.stringify({
       assignments,
       availableIds,
+      unavailableReasons,
       primaryColor,
       secondaryColor,
       useDualColor
     }));
-  }, [assignments, availableIds, primaryColor, secondaryColor, useDualColor]);
+  }, [assignments, availableIds, unavailableReasons, primaryColor, secondaryColor, useDualColor]);
 
   const isAvailable = (id: string) => availableIds.includes(id);
 
   const toggleAvailability = (id: string) => {
     if (availableIds.includes(id)) {
+        // Mark as Unavailable
         setAssignments(prev => prev.map(a => a.squadId === id ? { ...a, squadId: null } : a));
         setAvailableIds(prev => prev.filter(pId => pId !== id));
+        // Default to Injured as it's the most common reason to track
+        setUnavailableReasons(prev => ({ ...prev, [id]: 'Injured' }));
     } else {
+        // Mark as Available
         setAvailableIds(prev => [...prev, id]);
+        setUnavailableReasons(prev => {
+           const next = { ...prev };
+           delete next[id];
+           return next;
+        });
     }
+  };
+
+  const cycleReason = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const current = unavailableReasons[id] || 'Injured';
+    const order: UnavailableReason[] = ['Injured', 'Away', 'Suspended', 'Other'];
+    const nextIndex = (order.indexOf(current) + 1) % order.length;
+    setUnavailableReasons(prev => ({ ...prev, [id]: order[nextIndex] }));
   };
 
   const assignPlayer = (jersey: string, squadId: string | null) => {
@@ -79,6 +102,7 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
 
   const confirmResetAvailability = () => {
     setAvailableIds([]);
+    setUnavailableReasons({});
     setAssignments(prev => prev.map(a => ({ ...a, squadId: null })));
     localStorage.removeItem('MATCH_PLANNER_DRAFT');
     setIsResetModalOpen(false);
@@ -87,6 +111,12 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
   const confirmClearPositions = () => {
     setAssignments(prev => prev.map(a => ({ ...a, squadId: null })));
     setIsClearPositionsModalOpen(false);
+  };
+
+  const handleLockInTeam = () => {
+    localStorage.setItem('LOCKED_MATCH_TEAM', JSON.stringify(assignments));
+    setLockSuccess(true);
+    setTimeout(() => setLockSuccess(false), 2500);
   };
 
   const getPlayerName = (id: string | null) => {
@@ -99,8 +129,32 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
     return squad.filter(s => availableIds.includes(s.id) && !assignedIds.has(s.id));
   };
 
-  // REFINED POSITIONS: Increased vertical spread to prevent overlap
-  // Mobile layout (9:16 aspect ratio) allows for more vertical distance
+  const getReasonConfig = (reason: UnavailableReason) => {
+    switch (reason) {
+      case 'Injured': return { 
+        color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800', 
+        label: 'Injured', 
+        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /> 
+      };
+      case 'Away': return { 
+        color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800', 
+        label: 'Away', 
+        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /> 
+      };
+      case 'Suspended': return { 
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700', 
+        label: 'Suspended', 
+        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /> 
+      };
+      default: return { 
+        color: 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/5', 
+        label: 'Unavailable', 
+        icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /> 
+      };
+    }
+  };
+
+  // REFINED POSITIONS
   const positions: Record<string, { top: string; left: string }> = {
     '1': { top: '93%', left: '50%' }, // Fullback (Bottom)
     '2': { top: '84%', left: '88%' }, // Wing Right
@@ -142,18 +196,14 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
             color: black !important;
           }
 
-          /* Hide everything by default */
           body > * {
             display: none !important;
           }
           
-          /* We can't use display:none on parents because it kills the child. 
-             So we use the visibility trick for the react root. */
           body * { 
             visibility: hidden !important; 
           }
 
-          /* Show the lineup card and its children */
           #lineup-card, #lineup-card * { 
             visibility: visible !important; 
           }
@@ -173,32 +223,27 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
             z-index: 9999;
           }
 
-          /* Hide interface elements */
           .print-hide, button, [role="button"] { 
             display: none !important; 
           }
 
-          /* Color Overrides for Dark Mode Safety */
           #lineup-card h3, 
           #lineup-card h4, 
           #lineup-card p {
             color: black !important;
           }
 
-          /* Preserve White Text on Jerseys/Badges */
           #lineup-card .text-white, 
           #lineup-card .text-white * {
              color: white !important;
              -webkit-text-fill-color: white !important;
           }
           
-          /* Ensure Background Colors Print */
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           
-          /* Override Tailwind Dark Mode Text Colors if specific classes interfere */
           .dark #lineup-card h3 { color: black !important; }
         }
       `}</style>
@@ -215,29 +260,45 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
               Reset
             </button>
           </div>
-          <p className="text-xs text-gray-500 mb-6 font-medium">Toggle who is fit for match day.</p>
+          <p className="text-xs text-gray-500 mb-6 font-medium">Toggle availability & status.</p>
           
           <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
             <div className="grid grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
-              {squad.map(player => (
-                <div 
-                  key={player.id} 
-                  onClick={() => toggleAvailability(player.id)}
-                  className={`p-2.5 rounded-xl flex items-center justify-between cursor-pointer border transition-all ${
-                    isAvailable(player.id) 
-                    ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 ring-1 ring-green-100 dark:ring-green-900/20' 
-                    : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/5 text-gray-400 opacity-60'
-                  }`}
-                >
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-bold truncate pr-1 text-slate-900 dark:text-white">{player.name}</span>
-                    <span className="text-[8px] uppercase font-bold text-gray-400 truncate leading-none mt-0.5">{player.position || 'Player'}</span>
+              {squad.map(player => {
+                const available = isAvailable(player.id);
+                const reason = unavailableReasons[player.id] || 'Other';
+                const config = getReasonConfig(reason);
+                
+                return (
+                  <div 
+                    key={player.id} 
+                    onClick={() => toggleAvailability(player.id)}
+                    className={`p-2.5 rounded-xl flex items-center justify-between cursor-pointer border transition-all ${
+                      available 
+                      ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 ring-1 ring-green-100 dark:ring-green-900/20' 
+                      : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/5'
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-[11px] font-bold truncate pr-1 ${available ? 'text-slate-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>{player.name}</span>
+                      <span className="text-[8px] uppercase font-bold text-gray-400 truncate leading-none mt-0.5">{player.position || 'Player'}</span>
+                    </div>
+                    
+                    {available ? (
+                      <svg className="w-3.5 h-3.5 text-green-500 shrink-0 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    ) : (
+                      <div 
+                        onClick={(e) => cycleReason(e, player.id)}
+                        className={`px-1.5 py-0.5 rounded flex items-center space-x-1 shrink-0 ml-1 border ${config.color} hover:opacity-80 transition-opacity`}
+                        title={`Currently: ${reason}. Click to cycle.`}
+                      >
+                         <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{config.icon}</svg>
+                         <span className="text-[8px] font-bold uppercase">{reason === 'Other' ? 'N/A' : reason}</span>
+                      </div>
+                    )}
                   </div>
-                  {isAvailable(player.id) && (
-                    <svg className="w-3.5 h-3.5 text-green-500 shrink-0 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {squad.length === 0 && <p className="col-span-2 text-center text-xs text-gray-400 py-4">No squad members.</p>}
             </div>
           </div>
@@ -291,6 +352,9 @@ export const MatchPlanner: React.FC<MatchPlannerProps> = ({ squad }) => {
                 </p>
               </div>
               <div className="flex space-x-3 print-hide">
+                 <Button onClick={handleLockInTeam} variant={lockSuccess ? 'primary' : 'primary'} className={`text-xs py-1 px-4 shadow-none border transition-all ${lockSuccess ? 'bg-green-600 hover:bg-green-700 border-green-700 text-white' : 'bg-slate-900 dark:bg-white dark:text-slate-900 border-transparent'}`}>
+                    {lockSuccess ? 'Locked!' : 'Lock In Squad'}
+                 </Button>
                  <Button onClick={() => setIsClearPositionsModalOpen(true)} variant="secondary" className="text-xs py-1 px-4 border-gray-200 dark:border-white/10 shadow-none">Reset Positions</Button>
               </div>
            </div>

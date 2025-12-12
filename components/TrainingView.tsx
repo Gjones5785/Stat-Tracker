@@ -189,7 +189,10 @@ export const TrainingView: React.FC<TrainingViewProps> = ({
 
         <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col justify-center">
            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Avg. Attendance</span>
-           <span className="text-4xl font-heading font-black text-slate-900 dark:text-white">{avgAttendance}</span>
+           <div className="flex items-baseline gap-1.5">
+             <span className="text-4xl font-heading font-black text-slate-900 dark:text-white">{avgAttendance}</span>
+             <span className="text-xl font-heading font-bold text-gray-300 dark:text-gray-600">/ {squad.length}</span>
+           </div>
            <span className="text-xs font-medium text-gray-400 mt-1">Players per session</span>
         </div>
       </div>

@@ -34,6 +34,39 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     }));
   };
 
+  const handleImportLocked = () => {
+    try {
+      const saved = localStorage.getItem('LOCKED_MATCH_TEAM');
+      if (saved) {
+        const assignments = JSON.parse(saved); // Array of {jersey, squadId}
+        const newSelections: Record<string, string> = {};
+        
+        let importedCount = 0;
+        if (Array.isArray(assignments)) {
+            assignments.forEach((a: any) => {
+                if (a.squadId) {
+                // Verify the squad player still exists
+                if (squad.some(p => p.id === a.squadId)) {
+                    newSelections[a.jersey] = a.squadId;
+                    importedCount++;
+                }
+                }
+            });
+        }
+        
+        if (importedCount > 0) {
+            setSelections(newSelections);
+        } else {
+            alert("No valid locked team found. Please lock a team in the Planner first.");
+        }
+      } else {
+        alert("No locked team found. Go to the Planner and click 'Lock In Squad'.");
+      }
+    } catch (e) {
+      console.error("Failed to load locked team", e);
+    }
+  };
+
   const handleSubmit = () => {
     const result = [];
     for (let i = 1; i <= TEAM_SIZE; i++) {
@@ -67,6 +100,14 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Select Match Day Team</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">Assign squad players to jerseys for this match.</p>
           </div>
+          <button 
+             onClick={handleImportLocked}
+             className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg transition-colors border border-blue-100 dark:border-blue-900/30 flex items-center space-x-1"
+             title="Import the locked team from the Planner tab"
+          >
+             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+             <span>Load Locked Squad</span>
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-[#0F0F10]">
@@ -76,9 +117,6 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                const selectedId = selections[jersey] || '';
                
                // Calculate which players are available for THIS dropdown
-               // A player is available if:
-               // 1. They are not selected anywhere else (not in allSelectedIds)
-               // 2. OR they are the one currently selected for THIS jersey (p.id === selectedId)
                const allSelectedIds = getAllSelectedIds();
                const availablePlayers = squad.filter(p => {
                  const isTaken = allSelectedIds.includes(p.id);
