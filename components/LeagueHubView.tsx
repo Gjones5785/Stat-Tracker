@@ -392,6 +392,318 @@ const DRILL_LIBRARY: Drill[] = [
         'Call "My Ball" loudly'
     ],
     tags: ['Catching', 'High Ball', 'Courage']
+  },
+  {
+    id: 'd11',
+    title: 'Protect the Treasure',
+    category: 'Core Skills',
+    difficulty: 'Beginner',
+    durationMin: 15,
+    minPlayers: 10,
+    description: 'A fun agility and evasion game where teams must steal "treasure" from a central guarded zone.',
+    visualData: JSON.stringify({
+      pitchType: "full",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "c1", type: "cone", x: 20, y: 20},
+          {id: "c2", type: "cone", x: 80, y: 20},
+          {id: "c3", type: "cone", x: 20, y: 80},
+          {id: "c4", type: "cone", x: 80, y: 80},
+          {id: "g1", type: "defender", x: 45, y: 45, label: "G"},
+          {id: "g2", type: "defender", x: 55, y: 55, label: "G"},
+          {id: "t1", type: "ball", x: 50, y: 50},
+          {id: "t2", type: "ball", x: 52, y: 48},
+          {id: "a1", type: "attacker", x: 22, y: 22, label: "A"},
+          {id: "a2", type: "attacker", x: 78, y: 78, label: "A"}
+        ]
+      }]
+    }),
+    steps: [
+        'Split students into 4/5 teams. Place one group in the middle as guards, others in corner areas.',
+        'Place footballs, rugby balls, bibs, cones (treasure) in the center circle.',
+        'One student from each group attempts to steal items from the middle and return to their corner.',
+        'Guards try to tag/touch thieves. If tagged, they must return empty-handed.',
+        'Rotate guard duty.'
+    ],
+    coachingPoints: [
+        'Attackers: Run at pace, do not stop (loses momentum).',
+        'Attackers: Use quick footwork when approaching defenders.',
+        'Defenders: Stay as a solid unit to restrict space.',
+        'Defenders: Constant communication to organize team mates.'
+    ],
+    tags: ['Agility', 'Evasion', 'Communication', 'Fun']
+  },
+  {
+    id: 'd12',
+    title: 'The Channel',
+    category: 'Attack',
+    difficulty: 'Intermediate',
+    durationMin: 15,
+    minPlayers: 2,
+    description: 'A race to the finish line followed by a 1v1 attacking opportunity.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "c1", type: "cone", x: 30, y: 20},
+          {id: "c2", type: "cone", x: 70, y: 20},
+          {id: "c3", type: "cone", x: 30, y: 80},
+          {id: "c4", type: "cone", x: 70, y: 80},
+          {id: "p1", type: "attacker", x: 35, y: 82, label: "1"},
+          {id: "p2", type: "defender", x: 65, y: 82, label: "1"},
+          {id: "co", type: "attacker", x: 50, y: 15, label: "Coach"},
+          {id: "b", type: "ball", x: 52, y: 15}
+        ]
+      }]
+    }),
+    steps: [
+        'Pairs of similar ability start at one end of a 25m x 15m channel.',
+        'Teacher calls a number; both students sprint to the opposite end.',
+        'The winner receives a pass from the teacher at the finish line.',
+        'The winner becomes the attacker and tries to score at the opposite end vs the loser.',
+        'Vary the passes (high, bouncing, low) to simulate game situations.'
+    ],
+    coachingPoints: [
+        'Quick footwork and attack opponent at speed.',
+        'Handle the ball in two hands.',
+        'Defense: Tackle low, slide down legs, maintain body position.'
+    ],
+    tags: ['1v1', 'Speed', 'Tackling', 'Competition']
+  },
+  {
+    id: 'd13',
+    title: 'Beat Your Opponent',
+    category: 'Attack',
+    difficulty: 'Intermediate',
+    durationMin: 20,
+    minPlayers: 10,
+    description: 'Teams compete to move balls from their back line to the opposition line to score.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "a1", type: "attacker", x: 20, y: 80, label: "A"},
+          {id: "a2", type: "attacker", x: 50, y: 80, label: "A"},
+          {id: "a3", type: "attacker", x: 80, y: 80, label: "A"},
+          {id: "d1", type: "defender", x: 20, y: 20, label: "D"},
+          {id: "d2", type: "defender", x: 50, y: 20, label: "D"},
+          {id: "d3", type: "defender", x: 80, y: 20, label: "D"},
+          {id: "b1", type: "ball", x: 50, y: 82},
+          {id: "b2", type: "ball", x: 50, y: 18}
+        ]
+      }]
+    }),
+    steps: [
+        'Two teams on opposite back lines of a 30m x 30m grid.',
+        'Balls placed on the back lines. Only one ball per team in play at a time.',
+        'Teams try to run their ball to the opposition line to score.',
+        'Opposition must tag/tackle to prevent scoring. Point for every try.'
+    ],
+    coachingPoints: [
+        'Awareness: Do not over-commit attackers forward leaving gaps in defense.',
+        'Identify overlaps and space.',
+        'Skilled players can use grubber kicks or chips to beat the line.'
+    ],
+    tags: ['Teamwork', 'Tactical Awareness', 'Kicking']
+  },
+  {
+    id: 'd14',
+    title: 'League Island',
+    category: 'Core Skills',
+    difficulty: 'Beginner',
+    durationMin: 15,
+    minPlayers: 8,
+    description: 'Passing drill moving the ball from outside a grid to teammates in the center and back out.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "c1", type: "cone", x: 30, y: 30},
+          {id: "c2", type: "cone", x: 70, y: 30},
+          {id: "c3", type: "cone", x: 30, y: 70},
+          {id: "c4", type: "cone", x: 70, y: 70},
+          {id: "a1", type: "attacker", x: 50, y: 50, label: "In"},
+          {id: "a2", type: "attacker", x: 50, y: 85, label: "Out"},
+          {id: "a3", type: "attacker", x: 85, y: 50, label: "Out"},
+          {id: "d1", type: "defender", x: 50, y: 35, label: "D"},
+          {id: "d2", type: "defender", x: 50, y: 65, label: "D"},
+          {id: "d3", type: "defender", x: 35, y: 50, label: "D"},
+          {id: "d4", type: "defender", x: 65, y: 50, label: "D"},
+          {id: "b", type: "ball", x: 52, y: 85}
+        ]
+      }]
+    }),
+    steps: [
+        'Set up a large grid with a smaller square inside it (the Island).',
+        'Attacking team splits: some in center square, some outside large grid.',
+        'Defending team occupies the space between the two squares.',
+        'Attackers must pass from outside to inside, then back out.',
+        '1 point for successful pass in and out. Defenders score if they intercept.'
+    ],
+    coachingPoints: [
+        'Pass with two hands, aiming for the chest.',
+        'Receiver must be ready with hands up.',
+        'Communication and timing of the pass.',
+        'Progression: Must pass backwards.'
+    ],
+    tags: ['Passing', 'Vision', 'Possession']
+  },
+  {
+    id: 'd15',
+    title: 'League Ball',
+    category: 'Kicking',
+    difficulty: 'Beginner',
+    durationMin: 20,
+    minPlayers: 12,
+    description: 'A rugby league variation of kickball/baseball to assess passing, catching and kicking.',
+    visualData: JSON.stringify({
+      pitchType: "full",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "home", type: "cone", x: 50, y: 85},
+          {id: "1st", type: "cone", x: 80, y: 60},
+          {id: "2nd", type: "cone", x: 50, y: 35},
+          {id: "3rd", type: "cone", x: 20, y: 60},
+          {id: "bowl", type: "attacker", x: 50, y: 60, label: "Bowl"},
+          {id: "bat", type: "attacker", x: 50, y: 82, label: "Bat"},
+          {id: "f1", type: "defender", x: 30, y: 40, label: "F"},
+          {id: "f2", type: "defender", x: 70, y: 40, label: "F"},
+          {id: "f3", type: "defender", x: 50, y: 20, label: "F"},
+          {id: "b", type: "ball", x: 50, y: 62}
+        ]
+      }]
+    }),
+    steps: [
+        'Split into Batting and Bowling/Fielding teams.',
+        'Bowler passes rugby ball to Batter.',
+        'Batter catches and has 2 seconds to kick (drop punt, grubber, or punt) into the V.',
+        'Batter runs bases. Fielding team tries to tag runner or get ball to base.',
+        '3 outs to swap sides.'
+    ],
+    coachingPoints: [
+        'Correct catching technique (hands up).',
+        'Decision making: Choose the most effective kick based on field placement.',
+        'Fielding: Communication to catch high balls.'
+    ],
+    tags: ['Kicking', 'Catching', 'Fun', 'Game']
+  },
+  {
+    id: 'd16',
+    title: 'Lateral Mirror Race',
+    category: 'Defense',
+    difficulty: 'Intermediate',
+    durationMin: 15,
+    minPlayers: 2,
+    description: 'Improve lateral agility and reaction speed. A mirroring game where the defender must track the attacker laterally before a sudden sprint race.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "c1", type: "cone", x: 40, y: 50},
+          {id: "c2", type: "cone", x: 60, y: 50},
+          {id: "c3", type: "cone", x: 20, y: 20},
+          {id: "c4", type: "cone", x: 80, y: 20},
+          {id: "c5", type: "cone", x: 20, y: 80},
+          {id: "c6", type: "cone", x: 80, y: 80},
+          {id: "a", type: "attacker", x: 50, y: 60, label: "A"},
+          {id: "d", type: "defender", x: 50, y: 40, label: "D"},
+          {id: "b", type: "ball", x: 52, y: 60}
+        ]
+      }]
+    }),
+    steps: [
+        'Set up a 15m box with two cones 5m apart in the middle.',
+        'Attacker and Defender face each other 5m apart.',
+        'Attacker moves laterally between the cones; Defender mirrors.',
+        'Once Attacker steps WIDER than the cones, they sprint to a sideline.',
+        'Defender must react and beat them to that line.'
+    ],
+    coachingPoints: [
+        'Stay balanced on balls of feet.',
+        'Keep hips square to the opponent.',
+        'React instantly to the change of direction.'
+    ],
+    tags: ['Agility', 'Reaction', '1v1', 'Defense']
+  },
+  {
+    id: 'd17',
+    title: 'RPS Reaction Chase',
+    category: 'Core Skills',
+    difficulty: 'Beginner',
+    durationMin: 10,
+    minPlayers: 3,
+    description: 'A fun reaction game combining Rock, Paper, Scissors with catching, passing, and chasing.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "p1", type: "attacker", x: 45, y: 50, label: "P1"},
+          {id: "p2", type: "attacker", x: 55, y: 50, label: "P2"},
+          {id: "f", type: "attacker", x: 50, y: 40, label: "Feed"},
+          {id: "b", type: "ball", x: 50, y: 38},
+          {id: "c1", type: "cone", x: 30, y: 50}, // Loser cone left
+          {id: "c2", type: "cone", x: 70, y: 50}, // Loser cone right
+          {id: "try", type: "cone", x: 50, y: 80} // Try line
+        ]
+      }]
+    }),
+    steps: [
+        'Two players stand opposite each other. A feeder stands 1m away with back to them holding the ball.',
+        'Players play Rock, Paper, Scissors.',
+        'The Winner calls for the ball, catches the pass from the feeder, and sprints to the try line.',
+        'The Loser must run to a side cone, turn, and chase to tag the winner.',
+        'Winner becomes the new feeder. Rotate players.'
+    ],
+    coachingPoints: [
+        'React instantly to the result of the RPS game.',
+        'Winner: Loud call for the ball and clean catch before running.',
+        'Loser: Explosive turn and speed to make the tag.'
+    ],
+    tags: ['Reaction', 'Fun', 'Passing', 'Speed']
+  },
+  {
+    id: 'd18',
+    title: 'Evasion Gauntlet',
+    category: 'Attack',
+    difficulty: 'Beginner',
+    durationMin: 15,
+    minPlayers: 6,
+    description: 'An evasion game where ball carriers weave through static defenders. If a tag is made, the defenders are released to chase.',
+    visualData: JSON.stringify({
+      pitchType: "half",
+      frames: [{
+        id: "f1",
+        tokens: [
+          {id: "z1", type: "defender", x: 48, y: 35, label: "Z"},
+          {id: "z2", type: "defender", x: 52, y: 50, label: "Z"},
+          {id: "z3", type: "defender", x: 48, y: 65, label: "Z"},
+          {id: "a1", type: "attacker", x: 50, y: 85, label: "A"},
+          {id: "a2", type: "attacker", x: 50, y: 90, label: "A"},
+          {id: "b", type: "ball", x: 52, y: 85},
+          {id: "safe", type: "cone", x: 50, y: 15}
+        ]
+      }]
+    }),
+    steps: [
+        'Set up 3-5 defenders in a staggered column (the "Zombies").',
+        'Ball carriers run one by one weaving through the column.',
+        'Defenders are static but can reach out to tag.',
+        'If a tag occurs, defenders are released and chase all runners to the safety line.',
+        'Captured players become defenders.'
+    ],
+    coachingPoints: [
+        'Go forward with footwork, do not run sideways.',
+        'Explosive acceleration if a tag is called.',
+        'Defenders: React quickly to the tag call.'
+    ],
+    tags: ['Evasion', 'Agility', 'Fun', 'Warm Up']
   }
 ];
 
