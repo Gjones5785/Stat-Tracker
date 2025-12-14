@@ -61,6 +61,7 @@ export interface GameLogEntry {
   type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error' | 'substitution';
   reason?: string;
   location?: string; // e.g. "Defensive 20"
+  coordinate?: { x: number; y: number }; // Percentage 0-100 on the pitch (x=0 own line, x=100 opp line)
   period: '1st' | '2nd';
 }
 

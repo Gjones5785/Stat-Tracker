@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Player, PlayerStats, GameLogEntry, StatKey } from '../types';
 import { SocialShareCard } from './SocialShareCard';
 import { PlayerRow } from './PlayerRow';
+import { HeatmapView } from './HeatmapView';
 import { INITIAL_STATS, STAT_CONFIGS } from '../constants';
 
 interface MatchChartsProps {
@@ -19,7 +20,7 @@ interface MatchChartsProps {
 }
 
 export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'matchLog' | 'playerStats' | 'playedTime' | 'social'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'heatmap' | 'matchLog' | 'playerStats' | 'playedTime' | 'social'>('analytics');
   
   const { 
     players, 
@@ -137,6 +138,12 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
             Analytics
           </button>
           <button 
+             onClick={() => setActiveTab('heatmap')}
+             className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'heatmap' ? 'bg-white dark:bg-white/10 shadow-sm text-slate-900 dark:text-white' : 'text-gray-500'}`}
+          >
+            Heatmaps
+          </button>
+          <button 
              onClick={() => setActiveTab('matchLog')}
              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'matchLog' ? 'bg-white dark:bg-white/10 shadow-sm text-slate-900 dark:text-white' : 'text-gray-500'}`}
           >
@@ -162,6 +169,10 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
           </button>
         </div>
       </div>
+
+      {activeTab === 'heatmap' && (
+        <HeatmapView gameLog={gameLog} />
+      )}
 
       {activeTab === 'matchLog' && (
          <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5">
@@ -208,9 +219,9 @@ export const MatchCharts: React.FC<MatchChartsProps> = ({ matchData }) => {
          </div>
       )}
 
+      {/* Other tabs remain unchanged in logic but included for context in this full file update */}
       {activeTab === 'playerStats' && (
          <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-1 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 overflow-hidden">
-            {/* Added scrollbar styling classes to ensure the horizontal scroll is visible */}
             <div className="overflow-x-auto max-h-[600px] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-track]:bg-transparent">
                  <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">

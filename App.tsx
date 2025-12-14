@@ -9,6 +9,7 @@ import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
 import { VotingModal } from './components/VotingModal';
+import { LocationPickerModal } from './components/LocationPickerModal';
 import { MatchCharts } from './components/MatchCharts';
 import { MatchEventLog } from './components/MatchEventLog';
 import { MatchPlanner } from './components/MatchPlanner';
@@ -177,10 +178,15 @@ export const App: React.FC = () => {
   const [isVotingModalOpen, setIsVotingModalOpen] = useState(false);
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
   const [editingMatch, setEditingMatch] = useState<MatchHistoryItem | null>(null);
+  
   const [notificationConfig, setNotificationConfig] = useState<{ isOpen: boolean; title: string; message: string; } | null>(null);
-  const [noteModalConfig, setNoteModalConfig] = useState<{ isOpen: boolean; playerId: string; stat: StatKey; playerName: string; } | null>(null);
+  const [noteModalConfig, setNoteModalConfig] = useState<{ isOpen: boolean; playerId: string; stat: StatKey; playerName: string; coordinate?: {x: number, y: number} } | null>(null);
+  const [pendingStatUpdate, setPendingStatUpdate] = useState<{ playerId: string; stat: StatKey; delta: number } | null>(null);
+  
   const [cardType, setCardType] = useState<'yellow' | 'red' | null>(null);
   const [selectedCardPlayerId, setSelectedCardPlayerId] = useState<string>('');
   const [removeCardId, setRemoveCardId] = useState<string | null>(null);
@@ -473,24 +479,104 @@ export const App: React.FC = () => {
 
   const handleStatChange = (playerId: string, stat: StatKey, delta: number) => {
      if (!checkTimerActive()) return;
-     if (delta > 0 && (stat === 'penaltiesConceded' || stat === 'errors')) {
-       const p = players.find(pl => pl.id === playerId);
-       if (p) {
-         setNoteModalConfig({ isOpen: true, playerId, stat, playerName: p.name });
-       }
-       return;
+
+     // Special Flow for stats that benefit from Location Tracking
+     if (delta > 0 && (stat === 'triesScored' || stat === 'errors' || stat === 'penaltiesConceded')) {
+        setPendingStatUpdate({ playerId, stat, delta });
+        setIsLocationModalOpen(true);
+        return;
      }
+
+     // Normal Stats Flow
      updatePlayerStatsState(playerId, stat, delta);
      if (delta > 0) {
         const player = players.find(p => p.id === playerId);
         if (player) {
-           if (stat === 'triesScored') {
-              setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: 'try', period }]);
-           } else if (stat === 'kicks') {
+           if (stat === 'kicks') {
               setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: 'other', reason: 'Kick / Conversion', period }]);
            }
         }
      }
+  };
+
+  // Helper to derive location string from X coordinate
+  const deriveLocationText = (x: number) => {
+    // x is 0-100% of field width
+    if (x < 25) return "Defensive 20";
+    if (x < 50) return "Defensive Half";
+    if (x < 75) return "Attacking Half";
+    return "Attacking 20";
+  };
+
+  const handleLocationSubmit = (x: number, y: number, reason: string) => {
+    if (!pendingStatUpdate) {
+      setIsLocationModalOpen(false);
+      return;
+    }
+
+    const { playerId, stat, delta } = pendingStatUpdate;
+    const player = players.find(p => p.id === playerId);
+    
+    // Update the stat counter
+    updatePlayerStatsState(playerId, stat, delta);
+
+    // Create the full log entry
+    if (player) {
+       let type: GameLogEntry['type'] = 'other';
+       if (stat === 'triesScored') type = 'try';
+       else if (stat === 'errors') type = 'error';
+       else if (stat === 'penaltiesConceded') type = 'penalty';
+
+       const locationText = deriveLocationText(x);
+
+       setGameLog(prev => [...prev, { 
+         id: Date.now().toString(), 
+         timestamp: matchTime, 
+         formattedTime: formatTime(matchTime), 
+         playerId: player.id, 
+         playerName: player.name, 
+         playerNumber: player.number, 
+         type, 
+         coordinate: { x, y },
+         reason: reason || undefined, // Only add reason if provided
+         location: locationText, // Auto-derived location text
+         period 
+       }]);
+    }
+    
+    // Close modal and clear state
+    setIsLocationModalOpen(false);
+    setPendingStatUpdate(null);
+  };
+
+  const handleLocationCancel = () => {
+    // If they skip location, we still process the stat without extra details
+    if (pendingStatUpdate) {
+       const { playerId, stat, delta } = pendingStatUpdate;
+       const player = players.find(p => p.id === playerId);
+
+       updatePlayerStatsState(playerId, stat, delta);
+       
+       if (player) {
+          let type: GameLogEntry['type'] = 'other';
+          if (stat === 'triesScored') type = 'try';
+          else if (stat === 'errors') type = 'error';
+          else if (stat === 'penaltiesConceded') type = 'penalty';
+
+          setGameLog(prev => [...prev, { 
+             id: Date.now().toString(), 
+             timestamp: matchTime, 
+             formattedTime: formatTime(matchTime), 
+             playerId: player.id, 
+             playerName: player.name, 
+             playerNumber: player.number, 
+             type, 
+             period 
+          }]);
+       }
+    }
+    setIsLocationModalOpen(false);
+    setPendingStatUpdate(null);
   };
 
   const handleNoteSubmit = (note: string, location?: string) => {
@@ -499,9 +585,22 @@ export const App: React.FC = () => {
       const player = players.find(p => p.id === noteModalConfig.playerId);
       if (player) {
           const type = noteModalConfig.stat === 'penaltiesConceded' ? 'penalty' : 'error';
-          setGameLog(prev => [...prev, { id: Date.now().toString(), timestamp: matchTime, formattedTime: formatTime(matchTime), playerId: player.id, playerName: player.name, playerNumber: player.number, type: type, reason: note, location: location, period }]);
+          setGameLog(prev => [...prev, { 
+            id: Date.now().toString(), 
+            timestamp: matchTime, 
+            formattedTime: formatTime(matchTime), 
+            playerId: player.id, 
+            playerName: player.name, 
+            playerNumber: player.number, 
+            type: type, 
+            reason: note, 
+            location: location,
+            coordinate: noteModalConfig.coordinate, // Pass through coordinate if it exists
+            period 
+          }]);
       }
       setNoteModalConfig(null);
+      setPendingStatUpdate(null);
     }
   };
 
@@ -769,7 +868,23 @@ export const App: React.FC = () => {
       />
 
       <CardAssignmentModal isOpen={isCardModalOpen} type={cardType} players={players} onConfirm={confirmCardAssignment} onCancel={() => setIsCardModalOpen(false)} />
-      <NoteModal isOpen={noteModalConfig?.isOpen || false} title={noteModalConfig?.stat === 'penaltiesConceded' ? 'Penalty Reason' : 'Error Reason'} playerName={noteModalConfig?.playerName || ''} showLocation={true} onSubmit={handleNoteSubmit} onClose={() => setNoteModalConfig(null)} />
+      <NoteModal 
+        isOpen={noteModalConfig?.isOpen || false} 
+        title={noteModalConfig?.stat === 'penaltiesConceded' ? 'Penalty Reason' : 'Error Reason'} 
+        playerName={noteModalConfig?.playerName || ''} 
+        showLocation={true} 
+        onSubmit={handleNoteSubmit} 
+        onClose={() => setNoteModalConfig(null)} 
+      />
+      
+      {/* Location Picker with Reason Input */}
+      <LocationPickerModal 
+        isOpen={isLocationModalOpen}
+        title={pendingStatUpdate ? (pendingStatUpdate.stat === 'triesScored' ? 'Try Details' : pendingStatUpdate.stat === 'errors' ? 'Error Details' : 'Penalty Details') : 'Event Details'}
+        onConfirm={handleLocationSubmit}
+        onCancel={handleLocationCancel}
+      />
+
       <NotificationModal isOpen={notificationConfig?.isOpen || false} title={notificationConfig?.title || ''} message={notificationConfig?.message || ''} onClose={() => setNotificationConfig(null)} />
 
       {viewingMatch && (
