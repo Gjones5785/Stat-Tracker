@@ -8,6 +8,7 @@ import { ConfirmationModal } from './components/ConfirmationModal';
 import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NoteModal } from './components/NoteModal';
 import { NotificationModal } from './components/NotificationModal';
+import { VotingModal } from './components/VotingModal';
 import { MatchCharts } from './components/MatchCharts';
 import { MatchEventLog } from './components/MatchEventLog';
 import { MatchPlanner } from './components/MatchPlanner';
@@ -35,6 +36,7 @@ import {
   doc, 
   orderBy 
 } from 'firebase/firestore';
+import { saveActiveMatchState, loadActiveMatchState, clearActiveMatchState } from './dbUtils';
 
 export const App: React.FC = () => {
   // --- THEME ---
@@ -57,6 +59,19 @@ export const App: React.FC = () => {
   }, [darkMode]);
 
   const toggleTheme = () => setDarkMode(!darkMode);
+
+  // --- ONLINE STATUS ---
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // --- AUTH ---
   const [user, setUser] = useState<User | null>(null);
@@ -159,21 +174,50 @@ export const App: React.FC = () => {
   const [isTeamSelectOpen, setIsTeamSelectOpen] = useState(false);
   const [isEndHalfModalOpen, setIsEndHalfModalOpen] = useState(false);
   const [isEndMatchModalOpen, setIsEndMatchModalOpen] = useState(false);
+  const [isVotingModalOpen, setIsVotingModalOpen] = useState(false);
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
+  const [editingMatch, setEditingMatch] = useState<MatchHistoryItem | null>(null);
   const [notificationConfig, setNotificationConfig] = useState<{ isOpen: boolean; title: string; message: string; } | null>(null);
   const [noteModalConfig, setNoteModalConfig] = useState<{ isOpen: boolean; playerId: string; stat: StatKey; playerName: string; } | null>(null);
   const [cardType, setCardType] = useState<'yellow' | 'red' | null>(null);
   const [selectedCardPlayerId, setSelectedCardPlayerId] = useState<string>('');
   const [removeCardId, setRemoveCardId] = useState<string | null>(null);
 
+  // Initialize and migrate data from LocalStorage to IndexedDB
   useEffect(() => {
-    const saved = localStorage.getItem('ACTIVE_MATCH_STATE');
-    if (saved) {
-       const state = JSON.parse(saved);
-       setActiveMatchId(state.id);
-    }
+    const initStorage = async () => {
+      // 1. Check for legacy localStorage data
+      const legacy = localStorage.getItem('ACTIVE_MATCH_STATE');
+      if (legacy) {
+        try {
+          console.log("Migrating active match to IndexedDB...");
+          const state = JSON.parse(legacy);
+          // Migrate to IDB
+          await saveActiveMatchState(state);
+          // Clear legacy
+          localStorage.removeItem('ACTIVE_MATCH_STATE');
+          // Set state
+          setActiveMatchId(state.id);
+          return;
+        } catch (e) {
+          console.error("Migration failed:", e);
+        }
+      }
+
+      // 2. Load from IndexedDB
+      try {
+        const state = await loadActiveMatchState();
+        if (state && state.id) {
+          setActiveMatchId(state.id);
+        }
+      } catch (e) {
+        console.error("Failed to load active match from IDB:", e);
+      }
+    };
+
+    initStorage();
   }, []);
 
   const hasActiveMatch = !!activeMatchId;
@@ -231,6 +275,11 @@ export const App: React.FC = () => {
       await deleteDoc(doc(db, 'users', user.uid, 'matches', id));
   };
 
+  const handleEditMatchVotes = (match: MatchHistoryItem) => {
+    setEditingMatch(match);
+    setIsVotingModalOpen(true);
+  };
+
   const handleNewMatchClick = () => {
     setIsTeamSelectOpen(true);
   };
@@ -238,9 +287,10 @@ export const App: React.FC = () => {
   const saveActiveState = useCallback((
       p: Player[], t: number, per: '1st' | '2nd', log: GameLogEntry[], oppScore: number, oppName: string, id: string, sc: number, ts: number, hAdj: number
   ) => {
-      localStorage.setItem('ACTIVE_MATCH_STATE', JSON.stringify({
+      // Async save to IDB
+      saveActiveMatchState({
           players: p, matchTime: t, period: per, gameLog: log, opponentScore: oppScore, opponentName: oppName, id: id, setsCompleted: sc, totalSets: ts, homeScoreAdjustment: hAdj, date: new Date().toISOString()
-      }));
+      });
   }, []);
 
   const handleStartMatch = (selections: { jersey: string; squadId: string; name: string }[]) => {
@@ -280,10 +330,9 @@ export const App: React.FC = () => {
     setCurrentScreen('tracker');
   };
 
-  const handleResumeMatch = () => {
-      const saved = localStorage.getItem('ACTIVE_MATCH_STATE');
-      if (saved) {
-          const state = JSON.parse(saved);
+  const handleResumeMatch = async () => {
+      const state = await loadActiveMatchState();
+      if (state) {
           setPlayers(state.players);
           setMatchTime(state.matchTime);
           setPeriod(state.period);
@@ -299,8 +348,8 @@ export const App: React.FC = () => {
   };
 
   const handleDiscardActiveMatch = () => setIsDiscardModalOpen(true);
-  const onConfirmDiscard = () => {
-      localStorage.removeItem('ACTIVE_MATCH_STATE');
+  const onConfirmDiscard = async () => {
+      await clearActiveMatchState();
       setActiveMatchId(null); 
       setCurrentScreen('dashboard');
       setPlayers([]);
@@ -314,6 +363,68 @@ export const App: React.FC = () => {
       setIsDiscardModalOpen(false);
     };
   
+  // FINAL SAVE LOGIC (Called after Voting)
+  const handleFinalizeMatch = async (votes?: { threePointsId: string; twoPointsId: string; onePointId: string }) => {
+    if (user) {
+      const finalizedPlayers = players.map(p => {
+        if (p.isOnField && p.lastSubTime !== undefined) {
+          const sessionTime = matchTime - p.lastSubTime;
+          return { ...p, totalSecondsOnField: p.totalSecondsOnField + sessionTime };
+        }
+        return p;
+      });
+
+      const rawData = {
+        players: finalizedPlayers,
+        gameLog,
+        matchTime,
+        setsCompleted,
+        totalSets,
+        homeScoreAdjustment,
+        fullMatchStats: finalizedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {})
+      };
+
+      const cleanData = JSON.parse(JSON.stringify(rawData));
+      
+      // Calculate team score for history item
+      const currentTeamScore = Math.max(0, players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0) + homeScoreAdjustment);
+
+      const historyItem: MatchHistoryItem = {
+        id: activeMatchId || Date.now().toString(),
+        date: new Date().toISOString().split('T')[0],
+        teamName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team',
+        opponentName: opponentName || 'Opponent',
+        finalScore: `${currentTeamScore} - ${opponentScore}`,
+        result: currentTeamScore > opponentScore ? 'win' : currentTeamScore < opponentScore ? 'loss' : 'draw',
+        data: cleanData,
+        voting: votes
+      };
+
+      await addDoc(collection(db, 'users', user.uid, 'matches'), historyItem);
+      await clearActiveMatchState();
+      setActiveMatchId(null);
+      setCurrentScreen('dashboard');
+    }
+    setIsVotingModalOpen(false);
+  };
+
+  // HANDLER for both Finalizing match and Editing history
+  const handleVotingConfirm = async (votes?: { threePointsId: string; twoPointsId: string; onePointId: string }) => {
+    if (editingMatch) {
+      // We are in Edit Mode
+      if (votes && user) {
+         // Update existing match
+         const matchRef = doc(db, 'users', user.uid, 'matches', editingMatch.id);
+         await updateDoc(matchRef, { voting: votes });
+      }
+      setEditingMatch(null);
+      setIsVotingModalOpen(false);
+    } else {
+      // We are in Live Match Mode
+      handleFinalizeMatch(votes);
+    }
+  };
+
   useEffect(() => {
     let interval: any;
     if (isTimerRunning) {
@@ -500,6 +611,13 @@ export const App: React.FC = () => {
 
   return (
     <>
+      {/* OFFLINE INDICATOR */}
+      {!isOnline && (
+        <div className="bg-red-500 text-white text-[10px] font-bold text-center py-1 sticky top-0 z-[100] tracking-widest uppercase">
+          Offline Mode • Changes Saved Locally
+        </div>
+      )}
+
       {currentScreen === 'dashboard' ? (
         <Dashboard
           currentUser={userDisplay}
@@ -511,6 +629,7 @@ export const App: React.FC = () => {
           onDiscardActiveMatch={handleDiscardActiveMatch}
           onViewMatch={handleViewHistoryMatch}
           onDeleteMatch={handleDeleteHistoryMatch}
+          onEditMatchVotes={handleEditMatchVotes}
           onLogout={handleLogout}
           onAddSquadPlayer={handleAddSquadPlayer}
           onRemoveSquadPlayer={handleRemoveSquadPlayer}
@@ -527,6 +646,7 @@ export const App: React.FC = () => {
         />
       ) : (
          <div className="h-screen overflow-hidden bg-gray-100 dark:bg-[#0F0F10] flex flex-col font-sans">
+            {/* Match Tracker UI omitted for brevity, it remains unchanged */}
             <header className="bg-white dark:bg-[#1A1A1C] border-b border-gray-200 dark:border-white/5 shadow-sm shrink-0">
                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
                   <div onClick={() => setIsTimerRunning(!isTimerRunning)} className="bg-white dark:bg-[#1A1A1C] rounded-2xl px-5 py-2 border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center min-w-[160px] shadow-sm cursor-pointer hover:border-blue-200 dark:hover:border-blue-900/50 transition-all group select-none">
@@ -625,9 +745,29 @@ export const App: React.FC = () => {
 
       <TeamSelectionModal isOpen={isTeamSelectOpen} squad={squad} onConfirm={handleStartMatch} onCancel={() => setIsTeamSelectOpen(false)} />
       <ConfirmationModal isOpen={isEndHalfModalOpen} title="End First Half?" message="This will pause the timer and switch the period to 2nd Half." onConfirm={() => { setPeriod('2nd'); setIsTimerRunning(false); setIsEndHalfModalOpen(false); }} onCancel={() => setIsEndHalfModalOpen(false)} />
-      <ConfirmationModal isOpen={isEndMatchModalOpen} title="End Match?" message="This will finalize all stats and save the game to history." onConfirm={async () => { if (user) { const finalizedPlayers = players.map(p => { if (p.isOnField && p.lastSubTime !== undefined) { const sessionTime = matchTime - p.lastSubTime; return { ...p, totalSecondsOnField: p.totalSecondsOnField + sessionTime }; } return p; }); const rawData = { players: finalizedPlayers, gameLog, matchTime, setsCompleted, totalSets, homeScoreAdjustment, fullMatchStats: finalizedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: p.stats }), {}) }; const cleanData = JSON.parse(JSON.stringify(rawData)); const historyItem: MatchHistoryItem = { id: activeMatchId || Date.now().toString(), date: new Date().toISOString().split('T')[0], teamName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team', opponentName: opponentName || 'Opponent', finalScore: `${teamScore} - ${opponentScore}`, result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw', data: cleanData }; await addDoc(collection(db, 'users', user.uid, 'matches'), historyItem); localStorage.removeItem('ACTIVE_MATCH_STATE'); setActiveMatchId(null); setCurrentScreen('dashboard'); } setIsEndMatchModalOpen(false); }} onCancel={() => setIsEndMatchModalOpen(false)} />
+      <ConfirmationModal 
+        isOpen={isEndMatchModalOpen} 
+        title="End Match?" 
+        message="This will finalize the match time. You can then vote for Player of the Match." 
+        onConfirm={() => { 
+          setIsEndMatchModalOpen(false); 
+          setIsVotingModalOpen(true); 
+        }} 
+        onCancel={() => setIsEndMatchModalOpen(false)} 
+      />
       <ConfirmationModal isOpen={isDiscardModalOpen} title="Discard Active Match?" message="Are you sure you want to discard the current live match? This action cannot be undone and all data will be lost." onConfirm={onConfirmDiscard} onCancel={() => setIsDiscardModalOpen(false)} />
       <ConfirmationModal isOpen={!!removeCardId} title="Remove Card?" message={getRemoveCardMessage()} onConfirm={confirmRemoveCard} onCancel={() => setRemoveCardId(null)} />
+      
+      {/* Voting Modal Integration */}
+      <VotingModal 
+        isOpen={isVotingModalOpen}
+        players={editingMatch ? (editingMatch.data.players || []) : players}
+        initialVotes={editingMatch?.voting}
+        isEditing={!!editingMatch}
+        onConfirm={handleVotingConfirm}
+        onSkip={() => handleVotingConfirm()}
+      />
+
       <CardAssignmentModal isOpen={isCardModalOpen} type={cardType} players={players} onConfirm={confirmCardAssignment} onCancel={() => setIsCardModalOpen(false)} />
       <NoteModal isOpen={noteModalConfig?.isOpen || false} title={noteModalConfig?.stat === 'penaltiesConceded' ? 'Penalty Reason' : 'Error Reason'} playerName={noteModalConfig?.playerName || ''} showLocation={true} onSubmit={handleNoteSubmit} onClose={() => setNoteModalConfig(null)} />
       <NotificationModal isOpen={notificationConfig?.isOpen || false} title={notificationConfig?.title || ''} message={notificationConfig?.message || ''} onClose={() => setNotificationConfig(null)} />

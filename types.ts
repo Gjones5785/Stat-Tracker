@@ -1,5 +1,4 @@
 
-
 export interface PlayerIdentity {
   name: string;
   number: string;
@@ -73,6 +72,11 @@ export interface MatchHistoryItem {
   finalScore: string; // "24 - 10"
   result: 'win' | 'loss' | 'draw' | 'unknown';
   data: any; // Full state dump
+  voting?: {
+    threePointsId: string;
+    twoPointsId: string;
+    onePointId: string;
+  };
 }
 
 // --- LEAGUE HUB TYPES ---
