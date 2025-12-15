@@ -5,12 +5,23 @@ export interface PlayerIdentity {
 }
 
 export interface PlayerStats {
+  // Base Stats
   tackles: number;
   hitUps: number;
   penaltiesConceded: number;
   errors: number;
   triesScored: number;
   kicks: number;
+  
+  // Advanced Impact Stats
+  tryAssists: number;
+  lineBreaks: number;
+  offloads: number;
+  trySavers: number;
+  missedTackles: number;
+  oneOnOneStrips: number;
+  forcedDropouts: number;
+  fortyTwenties: number;
 }
 
 export type StatKey = keyof PlayerStats;
@@ -58,11 +69,12 @@ export interface GameLogEntry {
   playerId: string;
   playerName: string;
   playerNumber: string;
-  type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error' | 'substitution';
+  type: 'penalty' | 'try' | 'yellow_card' | 'red_card' | 'other' | 'error' | 'substitution' | 'big_play';
   reason?: string;
   location?: string; // e.g. "Defensive 20"
   coordinate?: { x: number; y: number }; // Percentage 0-100 on the pitch (x=0 own line, x=100 opp line)
   period: '1st' | '2nd';
+  impactValue?: number; // Store the impact value of this specific event
 }
 
 export interface MatchHistoryItem {
@@ -105,6 +117,23 @@ export interface PlaybookItem {
   title: string;
   type: 'Move' | 'Drill' | 'Note';
   content: string; // Text description or JSON string for tactics board
+  createdAt: number;
+}
+
+export interface PlanBlock {
+  id: string;
+  type: 'drill' | 'custom';
+  title: string;
+  durationMin: number;
+  drillId?: string; // If it links to a library drill
+  notes?: string;
+}
+
+export interface TrainingPlan {
+  id: string;
+  title: string;
+  blocks: PlanBlock[];
+  totalDuration: number;
   createdAt: number;
 }
 

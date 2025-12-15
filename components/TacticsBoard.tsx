@@ -22,9 +22,7 @@ const DEFAULT_DATA: TacticsData = {
   ]
 };
 
-// Animation constants
-const ANIMATION_DURATION_MS = 700;
-const FRAME_INTERVAL_MS = 750; // Slightly longer than duration to ensure completion
+type PlaybackSpeed = 'slow' | 'normal' | 'fast';
 
 export const TacticsBoard: React.FC<TacticsBoardProps> = ({ 
   initialData, 
@@ -51,6 +49,10 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
 
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>('normal');
+  const [isLooping, setIsLooping] = useState(true);
+  const [showPassingOptions, setShowPassingOptions] = useState(false);
+  
   const [draggedTokenId, setDraggedTokenId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   
@@ -60,6 +62,16 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
   const currentFrame = data.frames[currentFrameIndex];
   const previousFrame = currentFrameIndex > 0 ? data.frames[currentFrameIndex - 1] : null;
   const selectedToken = currentFrame.tokens.find(t => t.id === selectedTokenId);
+
+  // Timing Config based on Speed
+  const getTiming = () => {
+    switch (playbackSpeed) {
+      case 'slow': return { duration: 1500, interval: 2000 };
+      case 'fast': return { duration: 500, interval: 800 };
+      default: return { duration: 1000, interval: 1500 };
+    }
+  };
+  const { duration: animDuration, interval: frameInterval } = getTiming();
 
   // --- HISTORY MANAGEMENT ---
   const pushHistory = (newData: TacticsData) => {
@@ -96,17 +108,27 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
     if (isPlaying) {
       interval = setInterval(() => {
         setCurrentFrameIndex(prev => {
-          // Stop at the end instead of looping
           if (prev >= data.frames.length - 1) {
+            if (isLooping) {
+              return 0; // Loop back to start
+            }
             setIsPlaying(false);
             return prev;
           }
           return prev + 1;
         });
-      }, FRAME_INTERVAL_MS); 
+      }, frameInterval); 
     }
     return () => clearInterval(interval);
-  }, [isPlaying, data.frames.length]);
+  }, [isPlaying, data.frames.length, isLooping, frameInterval]);
+
+  // Reset to first frame when hitting play if at the end
+  const handlePlayToggle = () => {
+    if (!isPlaying && currentFrameIndex === data.frames.length - 1) {
+      setCurrentFrameIndex(0);
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   // --- EDITING ACTIONS ---
 
@@ -314,12 +336,14 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
       cursor: isReadOnly || isGhost ? 'default' : isDragging ? 'grabbing' : 'grab',
       transform: `translate(-50%, -50%) scale(${isDragging ? 1.2 : 1})`,
       // Synchronize transition with interval for fluid movement
-      transition: isDragging ? 'none' : `all ${ANIMATION_DURATION_MS}ms ease-in-out`,
+      transition: isDragging ? 'none' : `all ${animDuration}ms ease-in-out`,
       zIndex,
-      opacity: isGhost ? 0.3 : 1,
+      opacity: isGhost ? 0.4 : 1, // Slight bump in visibility for ghosts
       boxShadow: isSelected ? '0 0 0 2px white, 0 0 0 4px #3B82F6' : 'none'
     };
   };
+
+  const ballToken = currentFrame.tokens.find(t => t.type === 'ball');
 
   return (
     <div className="flex flex-col h-full select-none">
@@ -377,7 +401,7 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
                  </button>
               </>
             ) : (
-               <span className="text-[10px] text-gray-400 italic px-2">Select a token to edit</span>
+               <span className="text-[10px] text-gray-400 italic px-2">Select to edit</span>
             )}
           </div>
         </div>
@@ -429,11 +453,43 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
            </svg>
         )}
 
+        {/* --- PASSING OPTIONS VECTORS --- */}
+        {showPassingOptions && ballToken && (
+           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+              <defs>
+                 <marker id="arrowhead-pass" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                    <polygon points="0 0, 6 2, 0 4" fill="#fbbf24" fillOpacity="0.6" />
+                 </marker>
+              </defs>
+              {currentFrame.tokens.filter(t => t.type === 'attacker').map(atk => {
+                 // Calculate distance to ball
+                 const dist = Math.hypot(atk.x - ballToken.x, atk.y - ballToken.y);
+                 // Don't draw if it's practically on the ball (the carrier)
+                 if (dist < 4) return null; 
+
+                 return (
+                    <line
+                      key={`pass-${atk.id}`}
+                      x1={`${ballToken.x}%`}
+                      y1={`${ballToken.y}%`}
+                      x2={`${atk.x}%`}
+                      y2={`${atk.y}%`}
+                      stroke="#fbbf24" // Amber/Yellow
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                      strokeOpacity="0.6"
+                      markerEnd="url(#arrowhead-pass)"
+                    />
+                 );
+              })}
+           </svg>
+        )}
+
         {/* --- IMMEDIATE MOVEMENT VECTOR (PREV -> CURR) --- */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
           <defs>
-            <marker id="arrowhead-red" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
-               <polygon points="0 0, 6 2, 0 4" fill="rgba(255,255,255,0.6)" />
+            <marker id="arrowhead-white" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+               <polygon points="0 0, 6 2, 0 4" fill="rgba(255,255,255,0.7)" />
             </marker>
           </defs>
           {!isPlaying && previousFrame && currentFrame.tokens.map(token => {
@@ -453,8 +509,8 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
                 stroke="white" 
                 strokeWidth="2"
                 strokeDasharray="4"
-                strokeOpacity="0.6"
-                markerEnd="url(#arrowhead-red)"
+                strokeOpacity="0.7"
+                markerEnd="url(#arrowhead-white)"
               />
             );
           })}
@@ -513,7 +569,7 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
         {/* Playback Indicator */}
         {isPlaying && (
            <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse pointer-events-none shadow-lg">
-              PLAYING
+              PLAYING • {playbackSpeed.toUpperCase()}
            </div>
         )}
       </div>
@@ -521,7 +577,7 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
       {/* TIMELINE CONTROLS */}
       <div className="mt-4 flex flex-col space-y-3 bg-white dark:bg-[#1A1A1C] p-4 rounded-xl border border-gray-100 dark:border-white/10 shadow-sm">
          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
                
                <div className="flex items-center space-x-1">
                    <button 
@@ -533,7 +589,7 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
                    </button>
                    
                    <button 
-                     onClick={() => setIsPlaying(!isPlaying)}
+                     onClick={handlePlayToggle}
                      className={`w-12 h-12 flex items-center justify-center rounded-full transition-all shadow-md active:scale-95 ${isPlaying ? 'bg-red-100 text-red-600 border-2 border-red-200' : 'bg-green-100 text-green-600 border-2 border-green-200 hover:bg-green-200'}`}
                    >
                       {isPlaying ? (
@@ -551,16 +607,59 @@ export const TacticsBoard: React.FC<TacticsBoardProps> = ({
                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                    </button>
                </div>
+
+               {/* Settings Dropdown */}
+               <div className="flex items-center bg-gray-100 dark:bg-white/5 rounded-lg p-1">
+                  <button 
+                    onClick={() => setPlaybackSpeed('slow')}
+                    className={`px-2 py-1 text-[10px] font-bold rounded ${playbackSpeed === 'slow' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}`}
+                  >
+                    0.5x
+                  </button>
+                  <button 
+                    onClick={() => setPlaybackSpeed('normal')}
+                    className={`px-2 py-1 text-[10px] font-bold rounded ${playbackSpeed === 'normal' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}`}
+                  >
+                    1x
+                  </button>
+                  <button 
+                    onClick={() => setPlaybackSpeed('fast')}
+                    className={`px-2 py-1 text-[10px] font-bold rounded ${playbackSpeed === 'fast' ? 'bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}`}
+                  >
+                    2x
+                  </button>
+               </div>
+
+               {/* Toggle Loop */}
+               <button 
+                 onClick={() => setIsLooping(!isLooping)}
+                 className={`p-1.5 rounded-lg border transition-colors ${isLooping ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+                 title="Toggle Loop"
+               >
+                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+               </button>
+
+               {/* Toggle Passing Options */}
+               <button 
+                 onClick={() => setShowPassingOptions(!showPassingOptions)}
+                 className={`p-1.5 rounded-lg border transition-colors ${showPassingOptions ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-600 dark:text-yellow-400' : 'border-transparent text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+                 title="Show Passing Options"
+               >
+                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H3" />
+                 </svg>
+               </button>
                
-               <div className="flex items-center space-x-2 overflow-x-auto max-w-[150px] sm:max-w-none no-scrollbar pb-2 pt-2">
+               <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-2 hidden sm:block"></div>
+
+               <div className="hidden sm:flex items-center space-x-2 overflow-x-auto max-w-[150px] no-scrollbar pb-2 pt-2">
                   {data.frames.map((_, i) => (
                      <div 
                         key={i} 
                         onClick={() => { setIsPlaying(false); setCurrentFrameIndex(i); }}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold cursor-pointer transition-all border ${currentFrameIndex === i ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-md scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/10 border-transparent'}`}
-                     >
-                        {i + 1}
-                     </div>
+                        className={`w-2 h-2 rounded-full cursor-pointer transition-all ${currentFrameIndex === i ? 'bg-slate-800 dark:bg-white scale-150' : 'bg-gray-300 dark:bg-white/20 hover:bg-gray-400'}`}
+                     ></div>
                   ))}
                </div>
             </div>

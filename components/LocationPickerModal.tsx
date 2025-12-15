@@ -1,23 +1,80 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
+import { StatKey } from '../types';
 
 interface LocationPickerModalProps {
   isOpen: boolean;
   title: string;
+  stat?: StatKey; // To determine which list to show
   onConfirm: (x: number, y: number, reason: string) => void;
   onCancel: () => void;
 }
 
+const PENALTY_OPTIONS = [
+  "Biting",
+  "Blocking (Escort)",
+  "Cannonball Tackle",
+  "Chicken Wing",
+  "Crusher Tackle",
+  "Dangerous Contact",
+  "Dangerous Throw",
+  "Delaying the Restart (Time Wasting)",
+  "Dissent",
+  "Double Movement",
+  "Downtown (Chaser Offside)",
+  "Dragging Opponent over Touchline (After Held)",
+  "Eye Gouging",
+  "Flopping",
+  "Hand on Ball",
+  "High Tackle",
+  "Hip Drop",
+  "Holding Back",
+  "Holding Down",
+  "Illegal Ball Strip (Two-on-One Strip)",
+  "Incorrect Play-the-Ball",
+  "Incorrect Restart",
+  "Late Hit",
+  "Leg Pull",
+  "Marker Not Square",
+  "Obstruction",
+  "Offside",
+  "Professional Foul",
+  "Scrum Infringement",
+  "Shoulder Charge",
+  "Spear Tackle",
+  "Striking (Punching/Kicking/Kneeing)",
+  "Tripping",
+  "Voluntary Tackle",
+  "Walking Off the Mark",
+  "Other"
+];
+
+const ERROR_OPTIONS = [
+  "Knock On",
+  "Forward Pass",
+  "Play the Ball Error",
+  "Pass Out / Bad Pass",
+  "Failed Catch / Drop",
+  "Kick Out on Full",
+  "Incorrect Restart",
+  "Lost in Tackle",
+  "Other"
+];
+
 export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   isOpen,
   title,
+  stat,
   onConfirm,
   onCancel
 }) => {
   const [coordinate, setCoordinate] = useState<{ x: number; y: number } | null>(null);
   const [reason, setReason] = useState('');
+  const [customReason, setCustomReason] = useState('');
+  
   const pitchRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when modal opens
@@ -25,9 +82,11 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     if (isOpen) {
       setCoordinate(null);
       setReason('');
-      // Focus input if user wants to type immediately, though tapping map is primary
+      setCustomReason('');
+      // Focus appropriate input
       setTimeout(() => {
         if (inputRef.current) inputRef.current.focus();
+        else if (selectRef.current) selectRef.current.focus();
       }, 100);
     }
   }, [isOpen]);
@@ -58,9 +117,15 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
   const handleConfirm = () => {
     if (coordinate) {
-      onConfirm(coordinate.x, coordinate.y, reason);
+      const finalReason = reason === 'Other' ? customReason : reason;
+      onConfirm(coordinate.x, coordinate.y, finalReason);
     }
   };
+
+  const isPenalty = stat === 'penaltiesConceded';
+  const isError = stat === 'errors';
+  const showList = isPenalty || isError;
+  const options = isPenalty ? PENALTY_OPTIONS : ERROR_OPTIONS;
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
@@ -72,7 +137,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       <div className="relative bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in duration-200 flex flex-col">
         <div className="text-center mb-4">
           <h3 className="text-xl font-heading font-bold text-slate-900 dark:text-white">{title}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Tap location & add details.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Tap location & select reason.</p>
         </div>
 
         {/* Pitch Container */}
@@ -177,19 +242,53 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
            </div>
         </div>
 
-        {/* Note Input Area */}
+        {/* Reason Input Area */}
         <div className="mb-6">
-           <label htmlFor="reason" className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2 ml-1">Reason / Note (Optional)</label>
-           <input
-             ref={inputRef}
-             id="reason"
-             type="text"
-             value={reason}
-             onChange={(e) => setReason(e.target.value)}
-             placeholder="e.g. Knock on, Forward Pass, Intercept..."
-             className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white placeholder-gray-400 transition-all"
-             autoComplete="off"
-           />
+           <label htmlFor="reason" className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2 ml-1">
+             {showList ? 'Select Type' : 'Reason / Note (Optional)'}
+           </label>
+           
+           {showList ? (
+             <div className="space-y-2">
+               <select
+                 ref={selectRef}
+                 id="reason"
+                 value={reason}
+                 onChange={(e) => setReason(e.target.value)}
+                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white transition-all appearance-none"
+               >
+                 <option value="">-- Select {isPenalty ? 'Infringement' : 'Error'} --</option>
+                 {options.map((opt) => (
+                   <option key={opt} value={opt}>{opt}</option>
+                 ))}
+               </select>
+               {/* Custom Arrow for select */}
+               <div className="pointer-events-none absolute right-10 bottom-[108px] hidden">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+               </div>
+
+               {reason === 'Other' && (
+                 <input
+                   type="text"
+                   value={customReason}
+                   onChange={(e) => setCustomReason(e.target.value)}
+                   placeholder="Enter details..."
+                   className="w-full px-4 py-2 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-900 dark:text-white animate-in fade-in slide-in-from-top-1"
+                 />
+               )}
+             </div>
+           ) : (
+             <input
+               ref={inputRef}
+               id="reason"
+               type="text"
+               value={reason}
+               onChange={(e) => setReason(e.target.value)}
+               placeholder="e.g. Intercept, Kick chase..."
+               className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white placeholder-gray-400 transition-all"
+               autoComplete="off"
+             />
+           )}
         </div>
 
         <div className="flex space-x-3">

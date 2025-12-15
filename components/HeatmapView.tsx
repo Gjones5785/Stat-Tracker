@@ -10,6 +10,7 @@ type EventFilter = 'all' | 'try' | 'error' | 'penalty';
 
 export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
   const [filter, setFilter] = useState<EventFilter>('all');
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const filteredEvents = useMemo(() => {
     return gameLog.filter(event => {
@@ -32,7 +33,7 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
      if (type === 'try') return 'Try';
      if (type === 'penalty') return 'Penalty';
      if (type === 'error') return 'Error';
-     return '';
+     return type;
   };
 
   return (
@@ -43,25 +44,25 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
         {/* Filters */}
         <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
            <button 
-             onClick={() => setFilter('all')}
+             onClick={() => { setFilter('all'); setSelectedEventId(null); }}
              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'all' ? 'bg-white dark:bg-white/10 shadow-sm text-slate-900 dark:text-white' : 'text-gray-500'}`}
            >
              All
            </button>
            <button 
-             onClick={() => setFilter('try')}
+             onClick={() => { setFilter('try'); setSelectedEventId(null); }}
              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'try' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-500'}`}
            >
              Tries
            </button>
            <button 
-             onClick={() => setFilter('error')}
+             onClick={() => { setFilter('error'); setSelectedEventId(null); }}
              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'error' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'text-gray-500'}`}
            >
              Errors
            </button>
            <button 
-             onClick={() => setFilter('penalty')}
+             onClick={() => { setFilter('penalty'); setSelectedEventId(null); }}
              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'penalty' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'text-gray-500'}`}
            >
              Pens
@@ -71,7 +72,7 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
 
       <div className="relative w-full aspect-[16/9] bg-[#2d6a36] rounded-xl border-4 border-white dark:border-gray-700 overflow-hidden shadow-inner">
          {/* Rugby League Pitch SVG Overlay */}
-         <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none select-none">
+         <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none select-none z-0">
               {/* Base Grass Pattern */}
               <defs>
                 <pattern id="heatmapGrass" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -116,16 +117,6 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
                  <text x="34%" y="20%">30</text>
                  <text x="42%" y="20%" fill="#fca5a5" fillOpacity="0.6">40</text>
                  <text x="50%" y="20%">50</text>
-                 <text x="58%" y="20%" fill="#fca5a5" fillOpacity="0.6">40</text>
-                 <text x="66%" y="20%">30</text>
-                 <text x="74%" y="20%">20</text>
-                 <text x="82%" y="20%">10</text>
-
-                 <text x="18%" y="80%">10</text>
-                 <text x="26%" y="80%">20</text>
-                 <text x="34%" y="80%">30</text>
-                 <text x="42%" y="80%" fill="#fca5a5" fillOpacity="0.6">40</text>
-                 <text x="50%" y="80%">50</text>
                  <text x="58%" y="80%" fill="#fca5a5" fillOpacity="0.6">40</text>
                  <text x="66%" y="80%">30</text>
                  <text x="74%" y="80%">20</text>
@@ -134,26 +125,60 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
          </svg>
 
          {/* Orientation Labels */}
-         <div className="absolute bottom-2 left-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded">My Goal Line</div>
-         <div className="absolute bottom-2 right-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded">Opp Goal Line</div>
+         <div className="absolute bottom-2 left-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded z-0">My Goal Line</div>
+         <div className="absolute bottom-2 right-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded z-0">Opp Goal Line</div>
+
+         {/* Click handler to deselect */}
+         <div className="absolute inset-0 z-0" onClick={() => setSelectedEventId(null)}></div>
 
          {/* Data Points */}
-         {filteredEvents.map(event => (
-            <div 
-               key={event.id}
-               className={`absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full border border-white group cursor-help z-10 ${getDotStyle(event.type)} transition-transform hover:scale-150`}
-               style={{ left: `${event.coordinate!.x}%`, top: `${event.coordinate!.y}%` }}
-            >
-               {/* Tooltip */}
-               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap bg-slate-900 text-white text-[10px] px-2 py-1 rounded z-20 shadow-lg border border-white/10">
-                  <span className="font-bold text-xs block">{getLabel(event.type)}</span>
-                  <span className="text-gray-300">{event.playerName} • {event.formattedTime}</span>
-               </div>
-            </div>
-         ))}
+         {filteredEvents.map(event => {
+            const isSelected = selectedEventId === event.id;
+            // Increase Z-index if selected
+            const zIndex = isSelected ? 'z-30' : 'z-10';
+            
+            return (
+              <div 
+                 key={event.id}
+                 onClick={(e) => { e.stopPropagation(); setSelectedEventId(isSelected ? null : event.id); }}
+                 className={`absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full border border-white group cursor-pointer ${zIndex} ${getDotStyle(event.type)} transition-all duration-200 ${isSelected ? 'scale-125 ring-2 ring-white shadow-xl' : 'hover:scale-125'}`}
+                 style={{ left: `${event.coordinate!.x}%`, top: `${event.coordinate!.y}%` }}
+              >
+                 {/* Interactive Tooltip */}
+                 <div 
+                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[140px] bg-slate-900/95 backdrop-blur-md text-white p-2 rounded-lg shadow-xl border border-white/10 transform transition-all duration-200 origin-bottom pointer-events-none ${
+                      isSelected 
+                        ? 'opacity-100 scale-100 visible translate-y-0' 
+                        : 'opacity-0 scale-90 invisible translate-y-1'
+                    }`}
+                 >
+                    <div className="flex justify-between items-center mb-1 pb-1 border-b border-white/10 gap-3">
+                       <span className={`text-[8px] font-black uppercase tracking-wider px-1 py-px rounded ${event.type === 'try' ? 'bg-blue-500' : event.type === 'penalty' ? 'bg-red-500' : 'bg-orange-500'}`}>
+                         {getLabel(event.type)}
+                       </span>
+                       <span className="font-mono text-[9px] text-gray-400">{event.formattedTime}</span>
+                    </div>
+                    
+                    <div className="leading-tight">
+                       <div className="font-bold text-xs truncate text-white">{event.playerName}</div>
+                       <div className="text-[9px] font-mono text-gray-400">#{event.playerNumber}</div>
+                    </div>
+                    
+                    {event.reason && (
+                       <div className="mt-1 pt-1 border-t border-white/5 text-[9px] italic text-yellow-100/90 leading-snug break-words">
+                          "{event.reason}"
+                       </div>
+                    )}
+                    
+                    {/* Tooltip Arrow */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-900/95"></div>
+                 </div>
+              </div>
+            );
+         })}
 
          {filteredEvents.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
                <p className="text-white/30 text-sm font-medium italic">No location data for selected filter</p>
             </div>
          )}

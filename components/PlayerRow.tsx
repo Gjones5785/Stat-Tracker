@@ -1,6 +1,7 @@
+
 import React, { memo } from 'react';
 import { Player, StatKey, PlayerStats } from '../types';
-import { STAT_CONFIGS } from '../constants';
+import { STAT_CONFIGS, IMPACT_WEIGHTS } from '../constants';
 import { CompactStatControl } from './CompactStatControl';
 
 interface PlayerRowProps {
@@ -10,6 +11,7 @@ interface PlayerRowProps {
   onCardAction: (id: string, type: 'yellow' | 'red') => void;
   onRemoveCard: (id: string) => void;
   onToggleFieldStatus: (id: string) => void;
+  onOpenBigPlay: (playerId: string) => void; // New Prop
   isOdd: boolean;
   teamTotals: PlayerStats;
   maxValues: PlayerStats;
@@ -25,6 +27,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   onCardAction,
   onRemoveCard,
   onToggleFieldStatus,
+  onOpenBigPlay,
   isOdd,
   teamTotals,
   maxValues,
@@ -71,6 +74,44 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     );
   }
 
+  // --- IMPACT CALCULATION (Live View) ---
+  // Note: This logic duplicates slightly what's in App.tsx for "Live" display but keeps the component pure-ish.
+  // Ideally, 'impact' should be passed as a prop if it's heavy, but it's cheap to calc here.
+  const calculateImpact = (stats: PlayerStats, cardStatus: string | undefined) => {
+    let score = 0;
+    // Base
+    score += stats.tackles * IMPACT_WEIGHTS.tackles;
+    score += stats.hitUps * IMPACT_WEIGHTS.hitUps;
+    score += stats.triesScored * IMPACT_WEIGHTS.triesScored;
+    score += stats.kicks * IMPACT_WEIGHTS.kicks;
+    score += stats.errors * IMPACT_WEIGHTS.errors;
+    score += stats.penaltiesConceded * IMPACT_WEIGHTS.penaltiesConceded;
+    
+    // Advanced
+    score += (stats.tryAssists || 0) * IMPACT_WEIGHTS.tryAssists;
+    score += (stats.lineBreaks || 0) * IMPACT_WEIGHTS.lineBreaks;
+    score += (stats.offloads || 0) * IMPACT_WEIGHTS.offloads;
+    score += (stats.fortyTwenties || 0) * IMPACT_WEIGHTS.fortyTwenties;
+    score += (stats.forcedDropouts || 0) * IMPACT_WEIGHTS.forcedDropouts;
+    score += (stats.trySavers || 0) * IMPACT_WEIGHTS.trySavers;
+    score += (stats.oneOnOneStrips || 0) * IMPACT_WEIGHTS.oneOnOneStrips;
+    score += (stats.missedTackles || 0) * IMPACT_WEIGHTS.missedTackles;
+
+    // Cards
+    if (cardStatus === 'yellow') score += IMPACT_WEIGHTS.yellowCard;
+    if (cardStatus === 'red') score += IMPACT_WEIGHTS.redCard;
+
+    return score;
+  };
+
+  const impactScore = calculateImpact(player.stats, player.cardStatus);
+  
+  // Impact Styling
+  let impactColor = 'bg-gray-100 dark:bg-white/10 text-slate-700 dark:text-gray-300';
+  if (impactScore >= 30) impactColor = 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800'; // Elite
+  else if (impactScore >= 15) impactColor = 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'; // Good
+  else if (impactScore < 0) impactColor = 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30'; // Negative
+
   return (
     <tr className={`${rowClass} border-b border-gray-200 dark:border-white/5 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors`}>
       {/* Sticky Jersey Number with ON/OFF Toggle */}
@@ -99,9 +140,9 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         </div>
       </td>
 
-      {/* Sticky Name */}
-      <td className={`p-2 sticky left-[56px] z-10 ${rowClass} border-r border-gray-200 dark:border-white/5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[160px]`}>
-        <div className="flex items-center">
+      {/* Sticky Name + Big Play Trigger */}
+      <td className={`p-2 sticky left-[56px] z-10 ${rowClass} border-r border-gray-200 dark:border-white/5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[190px]`}>
+        <div className="flex items-center space-x-2">
           <input
             type="text"
             value={player.name}
@@ -110,6 +151,18 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
             placeholder="Player Name"
             disabled={isReadOnly}
           />
+          
+          {/* Big Play Trigger */}
+          {!isReadOnly && !hideControls && (
+            <button
+              onClick={() => onOpenBigPlay(player.id)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 dark:bg-white text-yellow-400 dark:text-slate-900 shadow-sm hover:scale-110 active:scale-95 transition-all"
+              title="Record Big Play (Impact)"
+            >
+              <span className="text-sm">⚡</span>
+            </button>
+          )}
+          
           {nameBadge}
         </div>
       </td>
@@ -138,6 +191,13 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
           </td>
         );
       })}
+
+      {/* IMPACT COLUMN */}
+      <td className={`p-2 min-w-[100px] border-l border-gray-200 dark:border-white/5`}>
+         <div className={`flex items-center justify-center h-10 rounded-lg font-black text-xl shadow-sm ${impactColor}`}>
+            {impactScore}
+         </div>
+      </td>
     </tr>
   );
 });
