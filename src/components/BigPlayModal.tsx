@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from './Button';
 import { Player, StatKey } from '../types';
@@ -7,8 +6,8 @@ import { IMPACT_WEIGHTS } from '../constants';
 interface BigPlayModalProps {
   isOpen: boolean;
   player: Player | null;
-  players: Player[]; // Added to support selection
-  onPlayerChange: (id: string) => void; // Added handler
+  players: Player[];
+  onPlayerChange: (id: string) => void;
   onConfirm: (stat: StatKey, description: string) => void;
   onClose: () => void;
 }
@@ -16,7 +15,7 @@ interface BigPlayModalProps {
 export const BigPlayModal: React.FC<BigPlayModalProps> = ({
   isOpen,
   player,
-  players = [], // Default to empty array safely
+  players,
   onPlayerChange,
   onConfirm,
   onClose
@@ -27,7 +26,6 @@ export const BigPlayModal: React.FC<BigPlayModalProps> = ({
     onConfirm(stat, label);
   };
 
-  // Sort players for the dropdown: 1-13, then bench
   const sortedPlayers = [...players].sort((a, b) => {
     const numA = parseInt(a.number);
     const numB = parseInt(b.number);
@@ -64,13 +62,13 @@ export const BigPlayModal: React.FC<BigPlayModalProps> = ({
               IMPACT PLAY
             </h2>
             
-            {/* Player Selector Dropdown */}
+            {/* Player Selector */}
             <div className="mt-2 flex items-center">
                <span className="text-slate-400 text-sm font-medium mr-2">For:</span>
                <div className="relative">
                   <select 
                     value={player.id}
-                    onChange={(e) => onPlayerChange && onPlayerChange(e.target.value)}
+                    onChange={(e) => onPlayerChange(e.target.value)}
                     className="appearance-none bg-slate-800 text-white pl-3 pr-8 py-1 rounded-lg text-sm font-bold border border-slate-700 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none cursor-pointer"
                   >
                     {sortedPlayers.map(p => (

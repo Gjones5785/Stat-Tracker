@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { Dashboard } from './components/Dashboard';
@@ -69,7 +70,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
            if (p.isOnField && p.cardStatus !== 'red') {
              // If yellow card, check duration (10 mins = 600s)
              if (p.cardStatus === 'yellow' && p.sinBinStartTime) {
-                // const timeInBin = matchTime - p.sinBinStartTime;
+                const timeInBin = matchTime - p.sinBinStartTime;
                 // Note: We don't auto-remove card, just track time. 
                 return p;
              }

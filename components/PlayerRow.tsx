@@ -75,8 +75,6 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   }
 
   // --- IMPACT CALCULATION (Live View) ---
-  // Note: This logic duplicates slightly what's in App.tsx for "Live" display but keeps the component pure-ish.
-  // Ideally, 'impact' should be passed as a prop if it's heavy, but it's cheap to calc here.
   const calculateImpact = (stats: PlayerStats, cardStatus: string | undefined) => {
     let score = 0;
     // Base
@@ -106,11 +104,11 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
 
   const impactScore = calculateImpact(player.stats, player.cardStatus);
   
-  // Impact Styling
-  let impactColor = 'bg-gray-100 dark:bg-white/10 text-slate-700 dark:text-gray-300';
-  if (impactScore >= 30) impactColor = 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800'; // Elite
-  else if (impactScore >= 15) impactColor = 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'; // Good
-  else if (impactScore < 0) impactColor = 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30'; // Negative
+  // Improved Impact Styling: High Contrast
+  let impactColor = 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border border-slate-700 dark:border-white shadow-lg';
+  
+  if (impactScore >= 30) impactColor = 'bg-gradient-to-br from-yellow-500 to-amber-600 text-white border-none shadow-md shadow-yellow-500/30'; // Elite
+  else if (impactScore < 0) impactColor = 'bg-red-600 text-white border border-red-700 shadow-sm'; // Negative
 
   return (
     <tr className={`${rowClass} border-b border-gray-200 dark:border-white/5 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors`}>
@@ -152,17 +150,6 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
             disabled={isReadOnly}
           />
           
-          {/* Big Play Trigger */}
-          {!isReadOnly && !hideControls && (
-            <button
-              onClick={() => onOpenBigPlay(player.id)}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 dark:bg-white text-yellow-400 dark:text-slate-900 shadow-sm hover:scale-110 active:scale-95 transition-all"
-              title="Record Big Play (Impact)"
-            >
-              <span className="text-sm">⚡</span>
-            </button>
-          )}
-          
           {nameBadge}
         </div>
       </td>
@@ -171,8 +158,9 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
       {STAT_CONFIGS.map((config) => {
         // Logic: Input is disabled if read-only OR if player has a card AND the stat is NOT penalties.
         const isStatDisabled = isReadOnly || (hasActiveCard && config.key !== 'penaltiesConceded');
-        // Reduce width if controls are hidden to allow more stats to fit
-        const cellClass = hideControls ? "p-2 min-w-[90px]" : "p-2 min-w-[130px]";
+        // Reduce width if controls are hidden to allow more stats to fit. 
+        // 115px fits the new compact control (approx 104px content width)
+        const cellClass = hideControls ? "p-2 min-w-[90px]" : "p-2 min-w-[115px]";
 
         return (
           <td key={config.key} className={cellClass}>
@@ -193,8 +181,8 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
       })}
 
       {/* IMPACT COLUMN */}
-      <td className={`p-2 min-w-[100px] border-l border-gray-200 dark:border-white/5`}>
-         <div className={`flex items-center justify-center h-10 rounded-lg font-black text-xl shadow-sm ${impactColor}`}>
+      <td className={`p-2 min-w-[90px] border-l border-gray-200 dark:border-white/5 bg-gray-100/50 dark:bg-white/5`}>
+         <div className={`flex items-center justify-center h-10 w-full rounded-xl font-black text-xl transition-colors ${impactColor}`}>
             {impactScore}
          </div>
       </td>

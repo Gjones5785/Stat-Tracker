@@ -29,15 +29,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       
       {/* Modal Content */}
       <div className="relative bg-white dark:bg-[#1A1A1C] rounded-xl shadow-2xl max-w-sm w-full p-6 transform transition-all scale-100 border border-gray-100 dark:border-white/10">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 text-center">
           {title}
         </h3>
         
-        <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed text-center">
           {message}
         </p>
         
-        <div className="flex space-x-3 justify-end">
+        <div className="flex space-x-3 justify-center">
           <Button 
             variant="secondary" 
             onClick={onCancel}
