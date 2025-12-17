@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from './Button';
 import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem } from '../types';
@@ -61,10 +60,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   
-  // Filter active squad for selection lists (Planner, Training)
   const activeSquad = useMemo(() => squad.filter(p => p.active !== false), [squad]);
 
-  // RESET SCROLL ON TAB CHANGE
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentTab]);
@@ -123,10 +120,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                <img src={logoSrc} alt="Logo" className="w-9 h-9 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" onError={() => setLogoError(true)}/>
              ) : (
                <div className="w-9 h-9 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-500/20">
-                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
+                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
                </div>
              )}
-             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">Simple Player Stat Tracker<span className="text-red-600">.</span></span>
+             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">LeagueLens<span className="text-red-600">.</span></span>
           </div>
           <div className="flex-1 flex justify-center px-2">
             <input type="text" value={clubName} onChange={handleClubNameChange} placeholder="ENTER TEAM NAME" className="bg-transparent text-center font-heading font-bold text-lg text-slate-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-200 dark:focus:placeholder-gray-700 uppercase tracking-wide w-full max-w-[250px] border-b border-transparent focus:border-gray-200 dark:focus:border-gray-700 transition-all hover:border-gray-100 dark:hover:border-gray-800 pb-0.5"/>
