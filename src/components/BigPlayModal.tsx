@@ -33,13 +33,13 @@ export const BigPlayModal: React.FC<BigPlayModalProps> = ({
     return a.number.localeCompare(b.number);
   });
 
-  const BigPlayButton = ({ stat, label, points, colorClass }: { stat: StatKey, label: string, points: number, colorClass: string }) => (
+  const BigPlayButton = ({ stat, label, points, colorClass, borderClass }: { stat: StatKey, label: string, points: number, colorClass: string, borderClass?: string }) => (
     <button
       onClick={() => handleSelect(stat, label)}
-      className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all transform active:scale-95 hover:shadow-md ${colorClass}`}
+      className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all transform active:scale-95 hover:shadow-lg ${colorClass} ${borderClass}`}
     >
-      <span className="text-sm font-bold uppercase tracking-wide mb-1">{label}</span>
-      <span className={`text-xs font-black px-2 py-0.5 rounded-full bg-white/20`}>
+      <span className="text-sm font-bold uppercase tracking-wide mb-1 font-heading">{label}</span>
+      <span className={`text-xl font-jersey font-medium px-2 py-0.5 rounded bg-black/20 backdrop-blur-sm min-w-[3rem]`}>
         {points > 0 ? '+' : ''}{points}
       </span>
     </button>
@@ -52,24 +52,24 @@ export const BigPlayModal: React.FC<BigPlayModalProps> = ({
         onClick={onClose}
       />
       
-      <div className="relative bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white dark:bg-midnight-800 rounded-2xl shadow-2xl dark:shadow-neon-blue max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-midnight-700">
         
         {/* Header */}
-        <div className="bg-slate-900 dark:bg-white/5 p-6 flex justify-between items-center border-b border-gray-100 dark:border-white/10">
+        <div className="bg-slate-900 dark:bg-midnight-900 p-6 flex justify-between items-center border-b border-gray-100 dark:border-midnight-700">
           <div>
-            <h2 className="text-xl font-heading font-black text-white italic tracking-wider flex items-center gap-2">
-              <span className="text-yellow-400 text-2xl">⚡</span> 
+            <h2 className="text-2xl font-heading font-black text-white italic tracking-wider flex items-center gap-2 drop-shadow-md">
+              <span className="text-yellow-400 text-3xl">⚡</span> 
               IMPACT PLAY
             </h2>
             
             {/* Player Selector */}
             <div className="mt-2 flex items-center">
-               <span className="text-slate-400 text-sm font-medium mr-2">For:</span>
+               <span className="text-slate-400 text-sm font-medium mr-2 uppercase tracking-widest">Target:</span>
                <div className="relative">
                   <select 
                     value={player.id}
                     onChange={(e) => onPlayerChange(e.target.value)}
-                    className="appearance-none bg-slate-800 text-white pl-3 pr-8 py-1 rounded-lg text-sm font-bold border border-slate-700 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none cursor-pointer"
+                    className="appearance-none bg-slate-800 dark:bg-midnight-800 text-white pl-3 pr-8 py-1 rounded-lg text-lg font-jersey font-medium border border-slate-700 dark:border-midnight-600 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none cursor-pointer tracking-wide"
                   >
                     {sortedPlayers.map(p => (
                       <option key={p.id} value={p.id}>
@@ -83,84 +83,84 @@ export const BigPlayModal: React.FC<BigPlayModalProps> = ({
                </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors bg-white/10 rounded-full p-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors bg-white/10 rounded-full p-2 hover:bg-white/20">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           
           {/* Attack Section */}
           <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span> Attack
+            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center">
+              <span className="w-2 h-2 bg-blue-500 dark:bg-neon-blue rounded-full mr-2 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span> Attack
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <BigPlayButton 
                 stat="tryAssists" 
                 label="Try Assist" 
                 points={IMPACT_WEIGHTS.tryAssists} 
-                colorClass="bg-blue-500 border-blue-600 text-white hover:bg-blue-600" 
+                colorClass="bg-blue-500 border-blue-600 text-white hover:bg-blue-600 dark:bg-blue-600 dark:border-neon-blue dark:shadow-neon-blue" 
               />
               <BigPlayButton 
                 stat="lineBreaks" 
                 label="Line Break" 
                 points={IMPACT_WEIGHTS.lineBreaks} 
-                colorClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40" 
+                colorClass="bg-blue-50 dark:bg-midnight-700/50 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-midnight-700 hover:border-blue-300 dark:hover:border-neon-blue" 
               />
               <BigPlayButton 
                 stat="offloads" 
                 label="Offload" 
                 points={IMPACT_WEIGHTS.offloads} 
-                colorClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40" 
+                colorClass="bg-blue-50 dark:bg-midnight-700/50 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-midnight-700 hover:border-blue-300 dark:hover:border-neon-blue" 
               />
               <BigPlayButton 
                 stat="fortyTwenties" 
                 label="40/20 Kick" 
                 points={IMPACT_WEIGHTS.fortyTwenties} 
-                colorClass="bg-indigo-500 border-indigo-600 text-white hover:bg-indigo-600" 
+                colorClass="bg-indigo-500 border-indigo-600 text-white hover:bg-indigo-600 dark:bg-indigo-600 dark:border-indigo-400" 
               />
               <BigPlayButton 
                 stat="forcedDropouts" 
                 label="Forced Drop-out" 
                 points={IMPACT_WEIGHTS.forcedDropouts} 
-                colorClass="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40" 
+                colorClass="bg-indigo-50 dark:bg-midnight-700/50 border-indigo-200 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-midnight-700 hover:border-indigo-300 dark:hover:border-indigo-400" 
               />
             </div>
           </div>
 
           {/* Defense Section */}
           <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span> Defense
+            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center">
+              <span className="w-2 h-2 bg-green-500 dark:bg-neon-green rounded-full mr-2 shadow-[0_0_8px_rgba(57,255,20,0.8)]"></span> Defense
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <BigPlayButton 
                 stat="trySavers" 
                 label="Try Saver" 
                 points={IMPACT_WEIGHTS.trySavers} 
-                colorClass="bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600" 
+                colorClass="bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 dark:bg-green-600 dark:border-neon-green dark:shadow-neon-green" 
               />
               <BigPlayButton 
                 stat="oneOnOneStrips" 
                 label="1-on-1 Strip" 
                 points={IMPACT_WEIGHTS.oneOnOneStrips} 
-                colorClass="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" 
+                colorClass="bg-emerald-50 dark:bg-midnight-700/50 border-emerald-200 dark:border-green-900 text-emerald-700 dark:text-green-300 hover:bg-emerald-100 dark:hover:bg-midnight-700 hover:border-emerald-300 dark:hover:border-neon-green" 
               />
             </div>
           </div>
 
           {/* Negative Section */}
           <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span> Negative
+            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center">
+              <span className="w-2 h-2 bg-red-500 dark:bg-red-500 rounded-full mr-2 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span> Negative
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <BigPlayButton 
                 stat="missedTackles" 
                 label="Missed Tackle" 
                 points={IMPACT_WEIGHTS.missedTackles} 
-                colorClass="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40" 
+                colorClass="bg-red-50 dark:bg-midnight-700/50 border-red-200 dark:border-red-900 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-midnight-700 hover:border-red-300 dark:hover:border-red-500" 
               />
             </div>
           </div>

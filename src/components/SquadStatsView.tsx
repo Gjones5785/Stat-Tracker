@@ -404,8 +404,9 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
   };
 
   const makeInactive = (id: string) => {
-    // Removed window.confirm for better UX and to ensure action fires immediately
-    onUpdatePlayer(id, { active: false });
+    if (window.confirm('Archive this player? They will be moved to the inactive list but their stats are kept.')) {
+        onUpdatePlayer(id, { active: false });
+    }
   };
 
   const restorePlayer = (id: string) => {
@@ -680,7 +681,7 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                       displaySquad.map(player => (
                         <tr key={player.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
                           {editingId === player.id ? (
-                            <><td className="px-6 py-4 whitespace-nowrap"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2 py-1 border border-gray-300 dark:border-white/20 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-white/5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Player Name" /></td><td className="px-6 py-4 whitespace-nowrap"><input type="text" value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className="w-full px-2 py-1 border border-gray-300 dark:border-white/20 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-white/5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Position" /></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2"><button type="button" onClick={saveEditing} className="inline-flex items-center justify-center p-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md hover:bg-green-200 transition-colors" title="Save"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></button><button type="button" onClick={cancelEditing} className="inline-flex items-center justify-center p-1.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 transition-colors" title="Cancel"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td></>
+                            <><td className="px-6 py-4 whitespace-nowrap"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2 py-1 border border-gray-300 dark:border-white/20 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-white/5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Player Name" /></td><td className="px-6 py-4 whitespace-nowrap"><input type="text" value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className="w-full px-2 py-1 border border-gray-300 dark:border-white/20 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-white/5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Position" /></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2"><button onClick={saveEditing} className="inline-flex items-center justify-center p-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md hover:bg-green-200 transition-colors" title="Save"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></button><button onClick={cancelEditing} className="inline-flex items-center justify-center p-1.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 transition-colors" title="Cancel"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td></>
                           ) : (
                             <>
                               <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${player.active === false ? 'text-gray-400 dark:text-gray-500' : 'text-slate-900 dark:text-white'}`}>{player.name}</td>
@@ -688,24 +689,24 @@ export const SquadStatsView: React.FC<SquadStatsViewProps> = ({
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div className="flex justify-end space-x-2">
                                   {/* EDIT (Both) */}
-                                  <button type="button" onClick={() => startEditing(player)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Edit Player">
+                                  <button onClick={() => startEditing(player)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Edit Player">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                   </button>
                                   
                                   {showInactive ? (
                                     <>
                                       {/* RESTORE */}
-                                      <button type="button" onClick={() => restorePlayer(player.id)} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors rounded-full hover:bg-green-50 dark:hover:bg-green-900/20" title="Restore Player">
+                                      <button onClick={() => restorePlayer(player.id)} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors rounded-full hover:bg-green-50 dark:hover:bg-green-900/20" title="Restore Player">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                       </button>
                                       {/* DELETE PERMANENTLY */}
-                                      <button type="button" onClick={() => permanentlyDelete(player.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete Permanently">
+                                      <button onClick={() => permanentlyDelete(player.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete Permanently">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                       </button>
                                     </>
                                   ) : (
                                     /* ARCHIVE / INACTIVE - Orange Box Icon */
-                                    <button type="button" onClick={() => makeInactive(player.id)} className="p-1.5 text-gray-400 hover:text-orange-500 transition-colors rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20" title="Archive / Inactive">
+                                    <button onClick={() => makeInactive(player.id)} className="p-1.5 text-gray-400 hover:text-orange-500 transition-colors rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20" title="Archive / Inactive">
                                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                     </button>
                                   )}

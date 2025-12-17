@@ -1,4 +1,3 @@
-
 import React, { memo } from 'react';
 import { Player, StatKey, PlayerStats } from '../types';
 import { STAT_CONFIGS, IMPACT_WEIGHTS } from '../constants';
@@ -180,7 +179,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         );
       })}
 
-      {/* IMPACT COLUMN */}
+      {/* IMPACT COLUMN - No Sticky */}
       <td className={`p-2 min-w-[90px] border-l border-gray-200 dark:border-midnight-700 bg-gray-100/50 dark:bg-midnight-900`}>
          <div className={`flex items-center justify-center h-10 w-full rounded-xl font-jersey text-3xl pt-1 transition-colors ${impactColor}`}>
             {impactScore}

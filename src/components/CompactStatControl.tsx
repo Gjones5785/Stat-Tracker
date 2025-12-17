@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TEAM_SIZE } from '../constants';
 

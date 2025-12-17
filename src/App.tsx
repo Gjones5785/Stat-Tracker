@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { Dashboard } from './components/Dashboard';
 import { MatchCharts } from './components/MatchCharts';
@@ -32,48 +31,42 @@ interface MatchTrackerProps {
 }
 
 const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFinish, onDiscard, onExit }) => {
-  // State
+  // State initialization with fallbacks for resumed matches
   const [players, setPlayers] = useState<Player[]>(initialState?.players || createInitialPlayers());
   const [gameLog, setGameLog] = useState<GameLogEntry[]>(initialState?.gameLog || []);
   const [matchTime, setMatchTime] = useState(initialState?.matchTime || 0);
   const [isRunning, setIsRunning] = useState(initialState?.isRunning || false);
   const [period, setPeriod] = useState<'1st' | '2nd'>(initialState?.period || '1st');
   const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
+  const [homeScoreAdjustment, setHomeScoreAdjustment] = useState(initialState?.homeScoreAdjustment || 0);
   const [teamName, setTeamName] = useState(initialState?.teamName || localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team');
   const [opponentName, setOpponentName] = useState(initialState?.opponentName || 'Opponent');
   
-  // Set Counters (Restored)
+  // Set Completion Counters
   const [completedSets, setCompletedSets] = useState(initialState?.completedSets || 0);
   const [totalSets, setTotalSets] = useState(initialState?.totalSets || 0);
   
-  // UI State
+  // UI and Modals State
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(!initialState); // Open if new match
   const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false);
   const [isVotingOpen, setIsVotingOpen] = useState(false);
+  const [isLogOpen, setIsLogOpen] = useState(false);
   const [timerError, setTimerError] = useState(false);
   
-  // Event Modals State
-  const [noteModal, setNoteModal] = useState<{ isOpen: boolean; playerId: string }>({ isOpen: false, playerId: '' });
+  // Specific Event Modals State
   const [locModal, setLocModal] = useState<{ isOpen: boolean; stat?: StatKey }>({ isOpen: false });
   const [bigPlayModal, setBigPlayModal] = useState<{ isOpen: boolean; playerId: string }>({ isOpen: false, playerId: '' });
   const [cardModal, setCardModal] = useState<{ isOpen: boolean; type: 'yellow' | 'red' | null }>({ isOpen: false, type: null });
   const [pendingStat, setPendingStat] = useState<{ playerId: string; key: StatKey; delta: number } | null>(null);
 
-  // Timer
+  // Match Timer Logic: Handles Match Time and Player On-Field Time
   useEffect(() => {
     let interval: any;
     if (isRunning) {
       interval = setInterval(() => {
         setMatchTime(prev => prev + 1);
-        // Update on-field time
         setPlayers(prev => prev.map(p => {
            if (p.isOnField && p.cardStatus !== 'red') {
-             // If yellow card, check duration (10 mins = 600s)
-             if (p.cardStatus === 'yellow' && p.sinBinStartTime) {
-                const timeInBin = matchTime - p.sinBinStartTime;
-                // Note: We don't auto-remove card, just track time. 
-                return p;
-             }
              return { ...p, totalSecondsOnField: p.totalSecondsOnField + 1 };
            }
            return p;
@@ -81,26 +74,25 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning, matchTime]);
+  }, [isRunning]);
 
-  // Auto-Save
+  // Auto-Save Effect: Persists state to IndexedDB for recovery
   useEffect(() => {
     saveActiveMatchState({
-      players, gameLog, matchTime, isRunning, period, opponentScore, teamName, opponentName, completedSets, totalSets
+      players, gameLog, matchTime, isRunning, period, opponentScore, homeScoreAdjustment, teamName, opponentName, completedSets, totalSets
     });
-  }, [players, gameLog, matchTime, isRunning, period, opponentScore, teamName, opponentName, completedSets, totalSets]);
+  }, [players, gameLog, matchTime, isRunning, period, opponentScore, homeScoreAdjustment, teamName, opponentName, completedSets, totalSets]);
 
-  // Derived Stats
-  const teamScore = players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0);
+  // Derived Values for UI Display
+  const derivedHomeScore = players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0);
+  const teamScore = derivedHomeScore + homeScoreAdjustment;
   const formattedTime = `${Math.floor(matchTime / 60).toString().padStart(2, '0')}:${(matchTime % 60).toString().padStart(2, '0')}`;
   const completionRate = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
 
-  // -- Handlers --
+  // -- Event Handlers --
 
   const handleTeamSelection = (selections: { jersey: string; squadId: string; name: string }[]) => {
-    const newPlayers = createInitialPlayers(); // Reset
-    
-    // Apply selections
+    const newPlayers = createInitialPlayers();
     selections.forEach(sel => {
        const idx = newPlayers.findIndex(p => p.number === sel.jersey);
        if (idx !== -1) {
@@ -109,7 +101,6 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
          newPlayers[idx].squadId = sel.squadId;
        }
     });
-    
     setPlayers(newPlayers);
     setIsTeamModalOpen(false);
   };
@@ -134,14 +125,12 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   };
 
   const updateStat = (playerId: string, key: StatKey, delta: number, skipLog = false) => {
-    // ENFORCE TIMER RUNNING FOR STATS
     if (!isRunning && !skipLog) {
        setTimerError(true);
        setTimeout(() => setTimerError(false), 500);
        return; 
     }
 
-    // If it's a complex stat that needs location (Penalties, Errors), open modal first
     if (!skipLog && (key === 'penaltiesConceded' || key === 'errors') && delta > 0) {
        setPendingStat({ playerId, key, delta });
        setLocModal({ isOpen: true, stat: key });
@@ -157,20 +146,16 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
     }));
 
     if (!skipLog && delta > 0) {
-       // Simple log for clicks
        let type: GameLogEntry['type'] = 'other';
        if (key === 'triesScored') type = 'try';
-       // We handle penalties/errors via modal usually, but if direct click:
        if (key === 'penaltiesConceded') type = 'penalty';
        if (key === 'errors') type = 'error';
-       
        addLogEntry(playerId, type, key);
     }
   };
 
   const handleLocationConfirm = (x: number, y: number, reason: string) => {
     if (pendingStat) {
-       // Commit the stat update
        setPlayers(prev => prev.map(p => {
          if (p.id === pendingStat.playerId) {
            const newVal = (p.stats[pendingStat.key] || 0) + pendingStat.delta;
@@ -178,14 +163,10 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
          }
          return p;
        }));
-       
-       // Log with location
        let type: GameLogEntry['type'] = 'other';
        if (pendingStat.key === 'penaltiesConceded') type = 'penalty';
        if (pendingStat.key === 'errors') type = 'error';
-
        addLogEntry(pendingStat.playerId, type, reason, undefined, undefined, { x, y });
-       
        setPendingStat(null);
        setLocModal({ isOpen: false });
     }
@@ -197,7 +178,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
 
   const handleCardAction = (id: string, type: 'yellow' | 'red') => {
      setCardModal({ isOpen: true, type });
-     setPendingStat({ playerId: id, key: 'penaltiesConceded', delta: 0 }); // Placeholder to store ID
+     setPendingStat({ playerId: id, key: 'penaltiesConceded', delta: 0 });
   };
 
   const confirmCard = (playerId: string, reason: string) => {
@@ -207,7 +188,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
            return {
               ...p,
               cardStatus: type || 'none',
-              isOnField: false, // Sent off
+              isOnField: false,
               sinBinStartTime: type === 'yellow' ? matchTime : undefined
            };
         }
@@ -230,15 +211,8 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
      setPlayers(prev => prev.map(p => {
         if (p.id === id) {
            const nextState = !p.isOnField;
-           if (nextState) {
-              // Going ON
-              addLogEntry(id, 'substitution', 'Interchange ON');
-              return { ...p, isOnField: true, lastSubTime: matchTime };
-           } else {
-              // Going OFF
-              addLogEntry(id, 'substitution', 'Interchange OFF');
-              return { ...p, isOnField: false };
-           }
+           addLogEntry(id, 'substitution', nextState ? 'Interchange ON' : 'Interchange OFF');
+           return { ...p, isOnField: nextState, lastSubTime: nextState ? matchTime : p.lastSubTime };
         }
         return p;
      }));
@@ -250,9 +224,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
 
   const confirmBigPlay = (stat: StatKey, desc: string) => {
      const id = bigPlayModal.playerId;
-     // Update stat
      updateStat(id, stat, 1, true);
-     // Log
      addLogEntry(id, 'big_play', desc, undefined, 1);
      setBigPlayModal({ isOpen: false, playerId: '' });
   };
@@ -274,9 +246,6 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
 
   const finishMatch = (votes: any) => {
      try {
-       const cleanPlayers = JSON.parse(JSON.stringify(players));
-       const cleanLog = JSON.parse(JSON.stringify(gameLog));
-       
        const matchData = {
           date: new Date().toISOString().split('T')[0],
           teamName: teamName || 'My Team',
@@ -284,18 +253,18 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
           finalScore: `${teamScore} - ${opponentScore}`,
           result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
           data: {
-             players: cleanPlayers,
-             gameLog: cleanLog,
+             players: JSON.parse(JSON.stringify(players)),
+             gameLog: JSON.parse(JSON.stringify(gameLog)),
              matchTime,
              period,
-             sets: { completed: completedSets, total: totalSets }
+             sets: { completed: completedSets, total: totalSets },
+             homeScoreAdjustment
           },
           voting: votes || null
        };
        onFinish(matchData);
      } catch (err) {
-       console.error("Error packaging match data:", err);
-       alert("An error occurred finishing the match. Data has been logged to console.");
+       console.error("Error finishing match:", err);
      }
   };
 
@@ -328,145 +297,102 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#0F0F10] pb-40 font-sans">
-       {/* Sticky Header */}
-       <header className="bg-white dark:bg-[#1A1A1C] sticky top-0 z-40 border-b border-gray-200 dark:border-white/10 shadow-sm transition-all">
-          <div className="w-full max-w-[1920px] mx-auto px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
-             
-             {/* LEFT: BACK & TIMER (Auto Width) */}
-             <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                 {/* Back Button */}
-                 <button 
-                    onClick={onExit}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-white/10 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                    title="Back to Home"
-                 >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+    <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-midnight-950 font-sans transition-colors duration-300 overflow-hidden">
+       {/* Header */}
+       <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-sm z-40">
+          <div className="w-full max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between gap-4">
+             <div className="flex items-center gap-4 shrink-0">
+                 <button onClick={onExit} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                  </button>
-
+                 
+                 {/* Enhanced Clock */}
                  <div className="flex flex-col items-center relative shrink-0">
                     <button 
                       onClick={() => setIsRunning(!isRunning)}
-                      className={`relative flex flex-col items-center justify-center w-32 py-2 rounded-xl border-2 transition-all duration-200 group active:scale-95 shadow-sm ${
-                        isRunning 
-                          ? 'bg-white dark:bg-[#1A1A1C] border-red-500 text-red-500' 
-                          : 'bg-green-500 border-green-600 text-white hover:bg-green-600 hover:shadow-md'
-                      } ${timerError ? 'animate-shake' : ''}`}
+                      className={`relative flex flex-col items-center justify-center px-8 py-2 rounded-2xl border-[3px] transition-all duration-200 group active:scale-95 shadow-sm min-w-[140px] ${isRunning ? 'bg-white dark:bg-midnight-800 border-red-500 text-red-500' : 'bg-green-500 border-green-600 text-white hover:bg-green-600'} ${timerError ? 'animate-shake' : ''}`}
                     >
-                       <span className="text-3xl font-mono font-black tracking-tight leading-none">{formattedTime}</span>
+                       <span className="text-4xl font-jersey font-medium tracking-widest leading-none">{formattedTime}</span>
                     </button>
-                    
-                    {/* Warning Tooltip */}
-                    {!isRunning && (
-                       <div className="absolute top-full mt-2 w-full z-50">
-                          <div className="bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] font-bold py-1 px-1 rounded-md border border-red-100 dark:border-red-900/50 text-center whitespace-nowrap shadow-sm animate-bounce w-full overflow-hidden text-ellipsis">
-                             Start Timer
-                          </div>
-                       </div>
-                    )}
                  </div>
              </div>
 
-             {/* MIDDLE: SCOREBOARD & SETS (Flex Grow - Takes all available space) */}
-             <div className="flex-1 flex flex-col items-center justify-center min-w-0 overflow-hidden">
-                {/* Teams & Scores */}
-                <div className="flex items-center justify-center w-full space-x-1 sm:space-x-3">
-                   
-                   {/* Home Team - Flex Grow to Left */}
-                   <div className="flex items-center justify-end flex-1 min-w-0 space-x-1.5 sm:space-x-2">
+             {/* Main Scoreboard Section */}
+             <div className="flex-1 flex flex-col items-center justify-center min-w-0">
+                <div className="flex items-center justify-center w-full space-x-2 sm:space-x-6">
+                   {/* Home Side */}
+                   <div className="flex items-center justify-end flex-1 min-w-0 space-x-3">
                       <input 
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
-                        className="bg-transparent text-right font-heading font-bold text-sm sm:text-lg md:text-xl text-slate-900 dark:text-white w-full min-w-[40px] focus:outline-none focus:border-b border-transparent focus:border-gray-300 transition-colors placeholder-gray-400 truncate"
+                        className="bg-transparent text-right font-heading font-extrabold text-lg md:text-2xl text-slate-900 dark:text-white w-full min-w-[60px] focus:outline-none focus:border-b border-transparent focus:border-gray-300 dark:focus:border-gray-600 transition-colors placeholder-gray-400 truncate"
                         placeholder="Home"
                       />
-                      <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-black text-blue-600 dark:text-blue-400 leading-none shrink-0 w-[30px] sm:w-[40px] text-center">{teamScore}</div>
+                      <input
+                        type="number"
+                        value={teamScore}
+                        onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)}
+                        className="text-5xl sm:text-6xl md:text-7xl font-jersey font-medium text-blue-600 dark:text-neon-blue leading-none shrink-0 w-[60px] sm:w-[80px] text-center pt-2 bg-transparent outline-none border-b-2 border-transparent focus:border-blue-500/30 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
                    </div>
-                   
-                   {/* VS */}
-                   <div className="text-gray-300 text-sm sm:text-lg font-light pb-1 shrink-0 px-1">-</div>
 
-                   {/* Away Team - Flex Grow to Right */}
-                   <div className="flex items-center justify-start flex-1 min-w-0 space-x-1.5 sm:space-x-2">
-                      <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-black text-red-500 dark:text-red-400 leading-none shrink-0 w-[30px] sm:w-[40px] text-center">{opponentScore}</div>
-                      
-                      {/* Score Controls - Moved closer to name */}
-                      <div className="flex flex-col space-y-0.5 shrink-0 z-10">
-                         <div className="flex space-x-0.5">
-                            <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-5 h-4 bg-gray-100 dark:bg-white/10 hover:bg-green-100 text-[8px] font-bold rounded-tl text-gray-600 flex items-center justify-center" title="Add Try (+4)">+T</button>
-                            <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-5 h-4 bg-gray-100 dark:bg-white/10 hover:bg-green-100 text-[8px] font-bold rounded-tr text-gray-600 flex items-center justify-center" title="Add Kick (+2)">+K</button>
-                         </div>
-                         <div className="flex space-x-0.5">
-                            <button onClick={() => setOpponentScore(opponentScore + 1)} className="w-5 h-4 bg-gray-100 dark:bg-white/10 hover:bg-green-100 text-[8px] font-bold rounded-bl text-gray-600 flex items-center justify-center" title="Add Point (+1)">+1</button>
-                            <button onClick={() => setOpponentScore(Math.max(0, opponentScore - 1))} className="w-5 h-4 bg-gray-100 dark:bg-white/10 hover:bg-red-100 text-[8px] font-bold rounded-br text-gray-600 flex items-center justify-center" title="Remove Point (-1)">-1</button>
-                         </div>
+                   <div className="text-gray-300 text-3xl font-light pb-2 shrink-0 px-2">-</div>
+
+                   {/* Away Side */}
+                   <div className="flex items-center justify-start flex-1 min-w-0 space-x-3">
+                      <div className="flex items-center shrink-0">
+                        <input
+                          type="number"
+                          value={opponentScore}
+                          onChange={(e) => setOpponentScore(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="text-5xl sm:text-6xl md:text-7xl font-jersey font-medium text-red-500 dark:text-red-400 leading-none shrink-0 w-[60px] sm:w-[80px] text-center pt-2 bg-transparent outline-none border-b-2 border-transparent focus:border-red-500/30 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        {/* Vertical Buttons Stack */}
+                        <div className="flex flex-col ml-1.5 space-y-1 shrink-0">
+                           <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-8 h-6 bg-gray-100 dark:bg-midnight-700 hover:bg-green-500 hover:text-white dark:hover:bg-green-600 text-[10px] font-black rounded-md text-gray-500 dark:text-gray-400 flex items-center justify-center transition-all border border-gray-200 dark:border-midnight-600 shadow-sm" title="Add Try (+4)">+T</button>
+                           <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-8 h-6 bg-gray-100 dark:bg-midnight-700 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 text-[10px] font-black rounded-md text-gray-500 dark:text-gray-400 flex items-center justify-center transition-all border border-gray-200 dark:border-midnight-600 shadow-sm" title="Add Kick (+2)">+K</button>
+                        </div>
                       </div>
-
                       <input 
                         value={opponentName}
                         onChange={(e) => setOpponentName(e.target.value)}
-                        className="bg-transparent text-left font-heading font-bold text-sm sm:text-lg md:text-xl text-slate-900 dark:text-white w-full min-w-[40px] focus:outline-none focus:border-b border-transparent focus:border-gray-300 transition-colors placeholder-gray-400 truncate"
+                        className="bg-transparent text-left font-heading font-extrabold text-lg md:text-2xl text-slate-900 dark:text-white w-full min-w-[60px] focus:outline-none focus:border-b border-transparent focus:border-gray-300 dark:focus:border-gray-600 transition-colors placeholder-gray-400 truncate"
                         placeholder="Away"
                       />
                    </div>
                 </div>
 
-                {/* Set Counter */}
-                <div className={`flex items-center space-x-3 mt-1 bg-gray-50 dark:bg-white/5 px-2 sm:px-3 py-0.5 rounded-full border border-gray-100 dark:border-white/5 transition-opacity ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
-                   <button 
-                     onClick={handleSetComplete}
-                     className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center hover:scale-110 transition-transform active:scale-95"
-                     title="Complete Set"
-                  >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                   </button>
-                   
-                   <div className="flex items-baseline space-x-1.5">
-                      <span className="text-xs sm:text-sm font-black text-slate-700 dark:text-gray-200 font-mono tracking-tight">{completedSets}/{totalSets}</span>
-                      <span className={`text-[8px] sm:text-[9px] font-bold ${completionRate >= 80 ? 'text-green-500' : completionRate >= 65 ? 'text-yellow-500' : 'text-red-500'}`}>
-                         ({completionRate}%)
-                      </span>
-                   </div>
-
-                   <button 
-                     onClick={handleSetIncomplete}
-                     className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center justify-center hover:scale-110 transition-transform active:scale-95"
-                     title="Incomplete Set"
-                  >
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                   </button>
+                {/* Tackle Set Rate Overlay */}
+                <div className={`flex items-center space-x-4 mt-2 bg-white/80 dark:bg-midnight-700/80 backdrop-blur-sm px-4 py-1 rounded-full border border-gray-100 dark:border-midnight-600 shadow-sm transition-opacity ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
+                   <button onClick={handleSetComplete} className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center hover:scale-110 transition-transform active:scale-95 shadow-sm"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg></button>
+                   <div className="flex items-center space-x-2 font-jersey text-xl tracking-wider"><span className="text-slate-900 dark:text-white">{completedSets} / {totalSets}</span><span className={`text-xs font-black px-1.5 rounded ${completionRate >= 80 ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20'}`}>{completionRate}%</span></div>
+                   <button onClick={handleSetIncomplete} className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:scale-110 transition-transform active:scale-95 shadow-sm"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
              </div>
 
-             {/* RIGHT: ACTIONS (Auto Width) */}
-             <div className="flex justify-end shrink-0">
-                <Button 
-                  onClick={handlePeriodEnd} 
-                  variant="secondary"
-                  className="px-2 sm:px-4 py-2 h-auto text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/30 border-none shadow-sm whitespace-nowrap min-w-[70px] sm:min-w-[80px]"
-                >
+             <div className="flex justify-end shrink-0 pl-4">
+                <Button onClick={handlePeriodEnd} variant="secondary" className="px-5 py-2.5 h-auto text-xs font-black uppercase tracking-widest bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-2 border-red-100 dark:border-red-900/30 rounded-xl shadow-sm hover:bg-red-100 whitespace-nowrap">
                    {period === '1st' ? 'End 1st' : 'End Match'}
                 </Button>
              </div>
           </div>
        </header>
 
-       {/* Main Content - Greyed out when !isRunning */}
-       <main className={`w-full max-w-[1920px] mx-auto px-2 sm:px-4 pt-4 transition-all duration-300 ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
-          <div className="bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden">
-             <div className="overflow-x-auto">
-               <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+       <main className={`flex-1 flex flex-col min-h-0 w-full max-w-[1920px] mx-auto px-4 pt-4 transition-all duration-300 ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+          <div className="flex-1 bg-white dark:bg-midnight-800 rounded-3xl shadow-apple dark:shadow-none border border-gray-200 dark:border-midnight-700 overflow-hidden flex flex-col min-h-0 mb-6">
+             <div className="flex-1 overflow-auto custom-scrollbar relative">
+               <table className="w-full min-w-max border-collapse text-left">
+                  <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-200 dark:border-midnight-700 sticky top-0 z-20">
                      <tr>
-                        <th className="p-3 text-left w-12 sticky left-0 z-10 bg-gray-50 dark:bg-[#1A1A1C]">#</th>
-                        <th className="p-3 text-left min-w-[150px] sticky left-[48px] z-10 bg-gray-50 dark:bg-[#1A1A1C]">Player</th>
-                        {INITIAL_STATS && Object.keys(INITIAL_STATS).slice(0, 6).map(k => (
-                           <th key={k} className="p-3 text-center min-w-[115px] text-xs font-bold text-gray-500 uppercase">{k.replace(/([A-Z])/g, ' $1').trim()}</th>
+                        <th className="p-3 text-left w-14 sticky left-0 z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm">#</th>
+                        <th className="p-3 text-left min-w-[200px] sticky left-[56px] z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm">Player</th>
+                        {Object.keys(INITIAL_STATS).slice(0, 6).map(k => (
+                           <th key={k} className="p-3 text-center min-w-[115px] text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em]">{k.replace(/([A-Z])/g, ' $1').trim()}</th>
                         ))}
-                        <th className="p-3 text-center w-24 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold uppercase text-xs tracking-wider sticky right-0 z-10">Impact</th>
+                        <th className="p-3 text-center min-w-[100px] w-28 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[10px] tracking-[0.2em]">Impact</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                  <tbody className="divide-y divide-gray-100 dark:divide-midnight-700">
                      {players.map((p, i) => (
                         <PlayerRow 
                            key={p.id}
@@ -487,91 +413,42 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
                </table>
              </div>
           </div>
-
-          <MatchEventLog events={gameLog} />
        </main>
 
-       {/* Sticky Bottom Action Bar - High Z-Index to stay on top, disabled when not running */}
-       <div className={`fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#1A1A1C]/95 backdrop-blur-md border-t border-gray-200 dark:border-white/10 p-4 z-[60] shadow-[0_-10px_20px_rgba(0,0,0,0.1)] transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+       {/* Floating Action Bar */}
+       <div className={`shrink-0 bg-white/90 dark:bg-midnight-900/90 backdrop-blur-md border-t border-gray-200 dark:border-midnight-700 p-4 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
           <div className="max-w-4xl mx-auto flex items-center justify-center space-x-4">
-             <button 
-               onClick={() => setCardModal({ isOpen: true, type: 'yellow' })}
-               className="flex flex-col items-center justify-center w-20 h-16 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-900/30 hover:bg-yellow-100 transition-colors group active:scale-95"
-             >
-                <div className="w-6 h-8 bg-yellow-400 rounded-sm shadow-sm group-hover:scale-110 transition-transform mb-1"></div>
-                <span className="text-[9px] font-bold text-yellow-700 dark:text-yellow-500 uppercase">Yellow</span>
+             <button onClick={() => setIsLogOpen(true)} className="flex flex-col items-center justify-center w-14 h-14 bg-gray-50 dark:bg-midnight-800 rounded-2xl border border-gray-200 dark:border-midnight-700 shadow-sm hover:bg-white transition-colors group">
+                <svg className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
+                <span className="text-[9px] font-black uppercase mt-1 text-gray-500">Log</span>
              </button>
-
-             <button 
-               onClick={() => setCardModal({ isOpen: true, type: 'red' })}
-               className="flex flex-col items-center justify-center w-20 h-16 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-900/30 hover:bg-red-100 transition-colors group active:scale-95"
-             >
-                <div className="w-6 h-8 bg-red-600 rounded-sm shadow-sm group-hover:scale-110 transition-transform mb-1"></div>
-                <span className="text-[9px] font-bold text-red-700 dark:text-red-500 uppercase">Red</span>
+             <button onClick={() => setCardModal({ isOpen: true, type: 'yellow' })} className="flex flex-col items-center justify-center w-16 h-14 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-900/40 hover:scale-105 transition-transform active:scale-95 shadow-sm">
+                <div className="w-5 h-6 bg-yellow-400 rounded-sm mb-1 border border-yellow-600"></div>
+                <span className="text-[9px] font-black uppercase text-yellow-700 dark:text-yellow-500">Sin Bin</span>
              </button>
-
-             <div className="w-px h-10 bg-gray-200 dark:bg-white/10 mx-2"></div>
-
+             <button onClick={() => setCardModal({ isOpen: true, type: 'red' })} className="flex flex-col items-center justify-center w-16 h-14 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-900/40 hover:scale-105 transition-transform active:scale-95 shadow-sm">
+                <div className="w-5 h-6 bg-red-600 rounded-sm mb-1 border border-red-800"></div>
+                <span className="text-[9px] font-black uppercase text-red-700 dark:text-red-400">Off</span>
+             </button>
+             <div className="w-px h-10 bg-gray-200 dark:bg-midnight-700 mx-2"></div>
              <button 
-               onClick={() => setBigPlayModal({ isOpen: true, playerId: players.find(p => p.isOnField)?.id || players[0].id })} // Default to first on field
-               className="flex-1 max-w-xs h-16 bg-slate-900 dark:bg-white rounded-xl shadow-lg flex items-center justify-center space-x-3 hover:scale-[1.02] transition-transform active:scale-95"
+               onClick={() => setBigPlayModal({ isOpen: true, playerId: players.find(p => p.isOnField)?.id || players[0].id })} 
+               className="flex-1 max-w-sm h-14 bg-slate-900 dark:bg-white rounded-2xl shadow-xl flex items-center justify-center space-x-3 active:scale-95 transition-all hover:shadow-2xl hover:-translate-y-0.5 group"
              >
-                <span className="text-2xl">⚡</span>
-                <div className="flex flex-col items-start">
-                   <span className="text-white dark:text-slate-900 font-bold text-sm">Log Impact Play</span>
-                   <span className="text-white/60 dark:text-slate-500 text-[10px] uppercase tracking-wider">Select Player</span>
-                </div>
+                <span className="text-2xl group-hover:animate-pulse">⚡</span>
+                <span className="text-white dark:text-slate-900 font-heading font-black text-sm uppercase tracking-widest">Impact Play</span>
              </button>
           </div>
        </div>
 
-       {/* Modals */}
-       <TeamSelectionModal 
-          isOpen={isTeamModalOpen} 
-          squad={squad} 
-          onConfirm={handleTeamSelection} 
-          onCancel={() => setIsTeamModalOpen(false)} 
-       />
-       
-       <LocationPickerModal 
-          isOpen={locModal.isOpen} 
-          title="Tap Location"
-          stat={locModal.stat}
-          onConfirm={handleLocationConfirm}
-          onCancel={() => { setLocModal({ isOpen: false }); setPendingStat(null); }}
-       />
-
-       <CardAssignmentModal 
-          isOpen={cardModal.isOpen} 
-          type={cardModal.type} 
-          players={players} 
-          onConfirm={confirmCard} 
-          onCancel={() => { setCardModal({ isOpen: false, type: null }); setPendingStat(null); }} 
-       />
-
-       <BigPlayModal 
-          isOpen={bigPlayModal.isOpen} 
-          player={players.find(p => p.id === bigPlayModal.playerId) || players[0]} // Fallback to avoid null
-          players={players}
-          onPlayerChange={(id) => setBigPlayModal(prev => ({ ...prev, playerId: id }))}
-          onConfirm={confirmBigPlay} 
-          onClose={() => setBigPlayModal({ isOpen: false, playerId: '' })} 
-       />
-
-       <ConfirmationModal 
-          isOpen={isConfirmEndOpen} 
-          title={period === '1st' ? "End 1st Half?" : "End Match?"}
-          message={period === '1st' ? "This will pause the timer and switch to 2nd Half." : "This will conclude the session. You can proceed to voting."} 
-          onConfirm={confirmPeriodEndAction} 
-          onCancel={() => setIsConfirmEndOpen(false)} 
-       />
-
-       <VotingModal 
-          isOpen={isVotingOpen} 
-          players={players} 
-          onConfirm={finishMatch} 
-          onSkip={() => finishMatch(null)} 
-       />
+       {/* Modals Container */}
+       <TeamSelectionModal isOpen={isTeamModalOpen} squad={squad} onConfirm={handleTeamSelection} onCancel={() => setIsTeamModalOpen(false)} />
+       <LocationPickerModal isOpen={locModal.isOpen} title="Mark Location" stat={locModal.stat} onConfirm={handleLocationConfirm} onCancel={() => { setLocModal({ isOpen: false }); setPendingStat(null); }} />
+       <CardAssignmentModal isOpen={cardModal.isOpen} type={cardModal.type} players={players} onConfirm={confirmCard} onCancel={() => { setCardModal({ isOpen: false, type: null }); setPendingStat(null); }} />
+       <BigPlayModal isOpen={bigPlayModal.isOpen} player={players.find(p => p.id === bigPlayModal.playerId) || players[0]} players={players} onPlayerChange={(id) => setBigPlayModal(prev => ({ ...prev, playerId: id }))} onConfirm={confirmBigPlay} onClose={() => setBigPlayModal({ isOpen: false, playerId: '' })} />
+       <MatchEventLog isOpen={isLogOpen} onClose={() => setIsLogOpen(false)} events={gameLog} />
+       <ConfirmationModal isOpen={isConfirmEndOpen} title={period === '1st' ? "End 1st Half?" : "End Match?"} message={period === '1st' ? "This will pause the timer and switch to 2nd Half." : "Proceed to post-match voting and save results."} onConfirm={confirmPeriodEndAction} onCancel={() => setIsConfirmEndOpen(false)} />
+       <VotingModal isOpen={isVotingOpen} players={players} onConfirm={finishMatch} onSkip={() => finishMatch(null)} />
     </div>
   );
 };
@@ -589,27 +466,17 @@ export const App: React.FC = () => {
   const [hasResumableMatch, setHasResumableMatch] = useState(false);
   const [editingVoteMatch, setEditingVoteMatch] = useState<MatchHistoryItem | null>(null);
 
-  // Auth Effect
+  const activeSquad = useMemo(() => squad.filter(p => p.active !== false), [squad]);
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (u) {
-        // Load Data (handled by subscriptions below)
-      } else {
-        setSquad([]);
-        setHistory([]);
-        setTrainingHistory([]);
-        setPlaybook([]);
-      }
+      if (!u) { setSquad([]); setHistory([]); setTrainingHistory([]); setPlaybook([]); }
     });
-    return unsubscribe;
   }, []);
 
-  // Theme Effect
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setDarkMode(true);
-    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
   }, []);
 
   useEffect(() => {
@@ -617,76 +484,35 @@ export const App: React.FC = () => {
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
 
-  // Check for active match on mount
   useEffect(() => {
-    loadActiveMatchState().then(data => {
-      if (data) setHasResumableMatch(true);
-    });
+    loadActiveMatchState().then(data => { if (data) setHasResumableMatch(true); });
   }, []);
 
-  // Subscriptions to subcollections
   useEffect(() => {
     if (!user) return;
-    
-    // Squad
-    const qSquad = query(collection(db, `users/${user.uid}/squad`), orderBy('name'));
-    const unsubSquad = onSnapshot(qSquad, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as SquadPlayer));
-      setSquad(list);
+    const unsubSquad = onSnapshot(query(collection(db, `users/${user.uid}/squad`), orderBy('name')), (snap) => {
+      setSquad(snap.docs.map(d => ({ id: d.id, ...d.data() } as SquadPlayer)));
     });
-
-    // Matches
-    const qMatches = query(collection(db, `users/${user.uid}/matches`), orderBy('date', 'desc'));
-    const unsubMatches = onSnapshot(qMatches, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as MatchHistoryItem));
-      setHistory(list);
+    const unsubMatches = onSnapshot(query(collection(db, `users/${user.uid}/matches`), orderBy('date', 'desc')), (snap) => {
+      setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as MatchHistoryItem)));
     });
-
-    // Training
-    const qTraining = query(collection(db, `users/${user.uid}/training`), orderBy('date', 'desc'));
-    const unsubTraining = onSnapshot(qTraining, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingSession));
-      setTrainingHistory(list);
+    const unsubTraining = onSnapshot(query(collection(db, `users/${user.uid}/training`), orderBy('date', 'desc')), (snap) => {
+      setTrainingHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingSession)));
     });
-
-    // Playbook
-    const qPlaybook = query(collection(db, `users/${user.uid}/playbook`), orderBy('createdAt', 'desc'));
-    const unsubPlaybook = onSnapshot(qPlaybook, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem));
-        setPlaybook(list);
+    const unsubPlaybook = onSnapshot(query(collection(db, `users/${user.uid}/playbook`), orderBy('createdAt', 'desc')), (snap) => {
+        setPlaybook(snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem)));
     });
-
-    return () => {
-      unsubSquad();
-      unsubMatches();
-      unsubTraining();
-      unsubPlaybook();
-    };
+    return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); };
   }, [user]);
 
-  // Handlers
-  const handleNewMatch = () => setActiveMatch({}); // Empty object signifies new match
-  
+  const handleNewMatch = () => setActiveMatch({});
   const handleResumeMatch = async () => {
     const data = await loadActiveMatchState();
-    if (data) {
-      setActiveMatch(data);
-    } else {
-      setHasResumableMatch(false);
-    }
+    if (data) setActiveMatch(data);
+    else setHasResumableMatch(false);
   };
-
-  const handleExitMatch = () => {
-    setActiveMatch(null);
-    setHasResumableMatch(true); 
-  };
-
-  const handleDiscardMatch = async () => {
-    setActiveMatch(null);
-    setHasResumableMatch(false);
-    await clearActiveMatchState();
-  };
-
+  const handleExitMatch = () => { setActiveMatch(null); setHasResumableMatch(true); };
+  const handleDiscardMatch = async () => { setActiveMatch(null); setHasResumableMatch(false); await clearActiveMatchState(); };
   const handleFinishMatch = async (matchData: any) => {
     if (!user) return;
     try {
@@ -694,117 +520,46 @@ export const App: React.FC = () => {
       await clearActiveMatchState();
       setActiveMatch(null);
       setHasResumableMatch(false);
-    } catch (e) {
-      console.error("Error saving match", e);
-      alert("Error saving match. Check console.");
-    }
+    } catch (e) { console.error(e); }
   };
 
-  // Squad Handlers
-  const handleAddSquadPlayer = async (p: any) => {
-    if(!user) return;
-    await addDoc(collection(db, `users/${user.uid}/squad`), { ...p, createdAt: Date.now() });
-  };
-  const handleRemoveSquadPlayer = async (id: string) => {
-    if(!user) return;
-    await deleteDoc(doc(db, `users/${user.uid}/squad`, id));
-  };
-  const handleUpdateSquadPlayer = async (id: string, updates: any) => {
-    if(!user) return;
-    await updateDoc(doc(db, `users/${user.uid}/squad`, id), updates);
-  };
+  const handleAddSquadPlayer = async (p: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/squad`), { ...p, active: true, createdAt: Date.now() }); };
+  const handleRemoveSquadPlayer = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/squad`, id)); };
+  const handleUpdateSquadPlayer = async (id: string, updates: any) => { if(!user) return; await updateDoc(doc(db, `users/${user.uid}/squad`, id), updates); };
+  const handleSaveTraining = async (session: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/training`), session); };
+  const handleUpdateTraining = async (id: string, updates: any) => { if(!user) return; await updateDoc(doc(db, `users/${user.uid}/training`, id), updates); };
+  const handleDeleteTraining = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/training`, id)); };
+  const handleAddPlaybookItem = async (item: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/playbook`), item); };
+  const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
+  const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
 
-  // Training Handlers
-  const handleSaveTraining = async (session: any) => {
-    if(!user) return;
-    await addDoc(collection(db, `users/${user.uid}/training`), session);
-  };
-  const handleUpdateTraining = async (id: string, updates: any) => {
-    if(!user) return;
-    await updateDoc(doc(db, `users/${user.uid}/training`, id), updates);
-  };
-  const handleDeleteTraining = async (id: string) => {
-    if(!user) return;
-    await deleteDoc(doc(db, `users/${user.uid}/training`, id));
-  };
+  if (!user) return <AuthScreen onLogin={setUser} />;
 
-  // Playbook Handlers
-  const handleAddPlaybookItem = async (item: any) => {
-    if(!user) return;
-    await addDoc(collection(db, `users/${user.uid}/playbook`), item);
-  };
-  const handleDeletePlaybookItem = async (id: string) => {
-    if(!user) return;
-    await deleteDoc(doc(db, `users/${user.uid}/playbook`, id));
-  };
-
-  const handleDeleteMatch = async (id: string) => {
-    if(!user) return;
-    await deleteDoc(doc(db, `users/${user.uid}/matches`, id));
-  }
-
-  const handleEditVotes = (match: MatchHistoryItem) => {
-     setEditingVoteMatch(match);
-  };
-
-  const handleUpdateVotes = async (votes: any) => {
-    if (!user || !editingVoteMatch) return;
-    try {
-        await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), {
-            voting: votes
-        });
-        setEditingVoteMatch(null);
-    } catch (e) {
-        console.error("Error updating votes", e);
-    }
-  };
-
-  if (!user) {
-    return <AuthScreen onLogin={setUser} />;
-  }
-
-  if (activeMatch) {
-    return (
-      <MatchTracker 
-        initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
-        squad={squad}
-        onFinish={handleFinishMatch}
-        onDiscard={handleDiscardMatch}
-        onExit={handleExitMatch}
-      />
-    );
-  }
+  if (activeMatch) return (
+    <MatchTracker 
+      initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
+      squad={activeSquad}
+      onFinish={handleFinishMatch}
+      onDiscard={handleDiscardMatch}
+      onExit={handleExitMatch}
+    />
+  );
 
   if (viewingMatch) {
-    // Process match data for charts
     const { players, gameLog, matchTime } = viewingMatch.data;
     const scores = viewingMatch.finalScore.split(' - ').map(s => parseInt(s.trim()));
-    const leftScore = scores[0] || 0;
-    const rightScore = scores[1] || 0;
-
-    const chartData = {
-      players,
-      leftScore,
-      rightScore,
-      possessionSeconds: matchTime / 2, // Estimate if not tracked
-      matchTime,
-      teamName: viewingMatch.teamName,
-      opponentName: viewingMatch.opponentName,
-      gameLog
-    };
-
     return (
-      <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#0F0F10] flex flex-col">
-        <div className="bg-white dark:bg-[#1A1A1C] p-4 shadow-sm border-b border-gray-200 dark:border-white/10 flex justify-between items-center sticky top-0 z-50">
-           <button onClick={() => setViewingMatch(null)} className="flex items-center text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white font-bold">
-             <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-             Back to Dashboard
+      <div className="min-h-screen bg-[#F5F5F7] dark:bg-midnight-950 flex flex-col">
+        <div className="bg-white dark:bg-midnight-800 p-4 shadow-sm border-b flex justify-between items-center sticky top-0 z-50">
+           <button onClick={() => setViewingMatch(null)} className="flex items-center text-slate-600 dark:text-gray-300 font-bold">
+             <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7" /></svg>
+             Back
            </button>
-           <h2 className="font-heading font-bold text-slate-900 dark:text-white hidden sm:block">Match Report</h2>
+           <h2 className="font-heading font-bold text-slate-900 dark:text-white">Match Report</h2>
            <div className="w-20"></div> 
         </div>
         <div className="flex-1 overflow-hidden">
-           <MatchCharts matchData={chartData} />
+           <MatchCharts matchData={{ players, leftScore: scores[0] || 0, rightScore: scores[1] || 0, possessionSeconds: matchTime / 2, matchTime, teamName: viewingMatch.teamName, opponentName: viewingMatch.opponentName, gameLog }} />
         </div>
       </div>
     );
@@ -822,7 +577,7 @@ export const App: React.FC = () => {
         onDiscardActiveMatch={handleDiscardMatch}
         onViewMatch={setViewingMatch}
         onDeleteMatch={handleDeleteMatch}
-        onEditMatchVotes={handleEditVotes}
+        onEditMatchVotes={setEditingVoteMatch}
         onLogout={() => signOut(auth)}
         onAddSquadPlayer={handleAddSquadPlayer}
         onRemoveSquadPlayer={handleRemoveSquadPlayer}
@@ -843,7 +598,11 @@ export const App: React.FC = () => {
           players={editingVoteMatch.data.players}
           initialVotes={editingVoteMatch.voting}
           isEditing={true}
-          onConfirm={handleUpdateVotes}
+          onConfirm={async (votes) => {
+            if (!user) return;
+            await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), { voting: votes });
+            setEditingVoteMatch(null);
+          }}
           onSkip={() => setEditingVoteMatch(null)}
         />
       )}
