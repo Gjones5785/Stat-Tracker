@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { GameLogEntry } from '../types';
 
@@ -39,7 +38,7 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
   return (
     <div className="bg-white dark:bg-[#1A1A1C] rounded-3xl p-6 shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Event Heatmap</h3>
+        <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Match Heatmap</h3>
         
         {/* Filters */}
         <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
@@ -70,108 +69,108 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
         </div>
       </div>
 
-      <div className="relative w-full aspect-[16/9] bg-[#2d6a36] rounded-xl border-4 border-white dark:border-gray-700 overflow-hidden shadow-inner">
-         {/* Rugby League Pitch SVG Overlay */}
-         <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none select-none z-0">
-              {/* Base Grass Pattern */}
-              <defs>
-                <pattern id="heatmapGrass" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <rect width="10" height="10" fill="#2d6a36"/>
-                  <path d="M0 10L10 0" stroke="#347a40" strokeWidth="0.5" opacity="0.3"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#heatmapGrass)" />
+      <div className="relative w-full aspect-[16/9] bg-[#34a15a] rounded-xl border-4 border-white dark:border-midnight-700 overflow-hidden shadow-inner">
+         <svg viewBox="0 0 100 56.25" width="100%" height="100%" className="absolute inset-0 pointer-events-none select-none z-0">
+              {/* Field Background */}
+              <rect width="100" height="56.25" fill="#34a15a" />
 
-              {/* FIELD MARKINGS */}
-              <line x1="10%" y1="0" x2="10%" y2="100%" stroke="white" strokeWidth="2" />
-              <line x1="90%" y1="0" x2="90%" y2="100%" stroke="white" strokeWidth="2" />
+              {/* Perimeter */}
+              <rect x="0" y="0" width="100" height="56.25" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
 
-              <line x1="18%" y1="0" x2="18%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-              <line x1="82%" y1="0" x2="82%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-
-              <line x1="26%" y1="0" x2="26%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-              <line x1="74%" y1="0" x2="74%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-
-              <line x1="34%" y1="0" x2="34%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-              <line x1="66%" y1="0" x2="66%" y2="100%" stroke="white" strokeWidth="1" opacity="0.6" />
-
-              {/* 40m Lines (RED) */}
-              <line x1="42%" y1="0" x2="42%" y2="100%" stroke="#ef4444" strokeWidth="2" opacity="0.9" />
-              <line x1="58%" y1="0" x2="58%" y2="100%" stroke="#ef4444" strokeWidth="2" opacity="0.9" />
-
-              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="white" strokeWidth="2" />
-
-              {/* Horizontal Dashes & Numbers */}
-              {[10, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90].map((x, i) => (
-                  <g key={x}>
-                    <line x1={`${x}%`} y1="10%" x2={`${x}%`} y2="11%" stroke="white" strokeWidth="2" />
-                    <line x1={`${x}%`} y1="25%" x2={`${x}%`} y2="26%" stroke="white" strokeWidth="2" />
-                    <line x1={`${x}%`} y1="75%" x2={`${x}%`} y2="74%" stroke="white" strokeWidth="2" />
-                    <line x1={`${x}%`} y1="90%" x2={`${x}%`} y2="89%" stroke="white" strokeWidth="2" />
-                  </g>
+              {/* Lines marking system */}
+              <line x1="10" y1="0" x2="10" y2="56.25" stroke="white" strokeWidth="0.8" />
+              <line x1="90" y1="0" x2="90" y2="56.25" stroke="white" strokeWidth="0.8" />
+              <line x1="50" y1="0" x2="50" y2="56.25" stroke="white" strokeWidth="0.6" />
+              
+              {/* Yardage Lines */}
+              {[18, 26, 34, 42, 58, 66, 74, 82].map(x => (
+                <line key={x} x1={x} y1="0" x2={x} y2="56.25" stroke={ (x === 42 || x === 58) ? "#ef4444" : "white" } strokeWidth="0.3" opacity="0.4" />
               ))}
 
-              <g className="text-[8px] sm:text-[10px] font-black text-white/40 select-none" style={{ textAnchor: 'middle', dominantBaseline: 'middle' }}>
-                 <text x="18%" y="20%">10</text>
-                 <text x="26%" y="20%">20</text>
-                 <text x="34%" y="20%">30</text>
-                 <text x="42%" y="20%" fill="#fca5a5" fillOpacity="0.6">40</text>
-                 <text x="50%" y="20%">50</text>
-                 <text x="58%" y="80%" fill="#fca5a5" fillOpacity="0.6">40</text>
-                 <text x="66%" y="80%">30</text>
-                 <text x="74%" y="80%">20</text>
-                 <text x="82%" y="80%">10</text>
+              {/* Yardage Numbers */}
+              <g className="font-jersey fill-white" style={{ fontSize: '2px', fontWeight: 'bold', opacity: 0.5 }}>
+                <text x="18" y="15" textAnchor="middle">&lt; 10</text>
+                <text x="26" y="15" textAnchor="middle">&lt; 20</text>
+                <text x="34" y="15" textAnchor="middle">&lt; 30</text>
+                <text x="42" y="15" textAnchor="middle">&lt; 40</text>
+                <text x="50" y="15" textAnchor="middle">50</text>
+                <text x="58" y="15" textAnchor="middle">40 &gt;</text>
+                <text x="66" y="15" textAnchor="middle">30 &gt;</text>
+                <text x="74" y="15" textAnchor="middle">20 &gt;</text>
+                <text x="82" y="15" textAnchor="middle">10 &gt;</text>
+                
+                <text x="18" y="48" textAnchor="middle">&lt; 10</text>
+                <text x="26" y="48" textAnchor="middle">&lt; 20</text>
+                <text x="34" y="48" textAnchor="middle">&lt; 30</text>
+                <text x="42" y="48" textAnchor="middle">&lt; 40</text>
+                <text x="50" y="48" textAnchor="middle">50</text>
+                <text x="58" y="48" textAnchor="middle">40 &gt;</text>
+                <text x="66" y="48" textAnchor="middle">30 &gt;</text>
+                <text x="74" y="48" textAnchor="middle">20 &gt;</text>
+                <text x="82" y="48" textAnchor="middle">10 &gt;</text>
+              </g>
+
+              {/* Home/Away Labels in End Sections */}
+              <g className="font-heading" style={{ fontWeight: 900, fill: 'white', opacity: 0.6 }}>
+                <text 
+                  x="5" 
+                  y="28.125" 
+                  fontSize="3.5" 
+                  textAnchor="middle" 
+                  dominantBaseline="middle" 
+                  transform="rotate(-90, 5, 28.125)"
+                >
+                  HOME
+                </text>
+                <text 
+                  x="95" 
+                  y="28.125" 
+                  fontSize="3.5" 
+                  textAnchor="middle" 
+                  dominantBaseline="middle" 
+                  transform="rotate(90, 95, 28.125)"
+                >
+                  AWAY
+                </text>
               </g>
          </svg>
 
-         {/* Orientation Labels */}
-         <div className="absolute bottom-2 left-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded z-0">My Goal Line</div>
-         <div className="absolute bottom-2 right-3 text-[9px] font-bold text-white/60 uppercase pointer-events-none px-2 py-1 bg-black/20 rounded z-0">Opp Goal Line</div>
-
-         {/* Click handler to deselect */}
          <div className="absolute inset-0 z-0" onClick={() => setSelectedEventId(null)}></div>
 
-         {/* Data Points */}
          {filteredEvents.map(event => {
             const isSelected = selectedEventId === event.id;
-            // Increase Z-index if selected
             const zIndex = isSelected ? 'z-30' : 'z-10';
             
             return (
               <div 
                  key={event.id}
                  onClick={(e) => { e.stopPropagation(); setSelectedEventId(isSelected ? null : event.id); }}
-                 className={`absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full border border-white group cursor-pointer ${zIndex} ${getDotStyle(event.type)} transition-all duration-200 ${isSelected ? 'scale-125 ring-2 ring-white shadow-xl' : 'hover:scale-125'}`}
+                 className={`absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full border border-white group cursor-pointer ${zIndex} ${getDotStyle(event.type)} transition-all duration-200 ${isSelected ? 'scale-150 ring-2 ring-white shadow-xl' : 'hover:scale-125'}`}
                  style={{ left: `${event.coordinate!.x}%`, top: `${event.coordinate!.y}%` }}
               >
-                 {/* Interactive Tooltip */}
                  <div 
-                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[140px] bg-slate-900/95 backdrop-blur-md text-white p-2 rounded-lg shadow-xl border border-white/10 transform transition-all duration-200 origin-bottom pointer-events-none ${
+                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max max-w-[160px] bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-xl shadow-2xl border border-white/10 transform transition-all duration-200 origin-bottom pointer-events-none ${
                       isSelected 
                         ? 'opacity-100 scale-100 visible translate-y-0' 
-                        : 'opacity-0 scale-90 invisible translate-y-1'
+                        : 'opacity-0 scale-90 invisible translate-y-2'
                     }`}
                  >
-                    <div className="flex justify-between items-center mb-1 pb-1 border-b border-white/10 gap-3">
-                       <span className={`text-[8px] font-black uppercase tracking-wider px-1 py-px rounded ${event.type === 'try' ? 'bg-blue-500' : event.type === 'penalty' ? 'bg-red-500' : 'bg-orange-500'}`}>
+                    <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-white/10 gap-4">
+                       <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${event.type === 'try' ? 'bg-blue-500' : event.type === 'penalty' ? 'bg-red-500' : 'bg-orange-500'}`}>
                          {getLabel(event.type)}
                        </span>
                        <span className="font-mono text-[9px] text-gray-400">{event.formattedTime}</span>
                     </div>
-                    
-                    <div className="leading-tight">
-                       <div className="font-bold text-xs truncate text-white">{event.playerName}</div>
-                       <div className="text-[9px] font-mono text-gray-400">#{event.playerNumber}</div>
+                    <div className="leading-tight mb-1">
+                       <div className="font-black text-sm truncate text-white">{event.playerName}</div>
+                       <div className="text-[10px] font-bold text-gray-400">JERSEY #{event.playerNumber}</div>
                     </div>
-                    
                     {event.reason && (
-                       <div className="mt-1 pt-1 border-t border-white/5 text-[9px] italic text-yellow-100/90 leading-snug break-words">
+                       <div className="mt-1.5 pt-1.5 border-t border-white/5 text-[10px] italic text-yellow-100/90 leading-snug break-words">
                           "{event.reason}"
                        </div>
                     )}
-                    
-                    {/* Tooltip Arrow */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-900/95"></div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-slate-900/95"></div>
                  </div>
               </div>
             );
@@ -179,15 +178,15 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
 
          {filteredEvents.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-               <p className="text-white/30 text-sm font-medium italic">No location data for selected filter</p>
+               <p className="text-white/20 text-xs font-black uppercase tracking-widest">No events in this view</p>
             </div>
          )}
       </div>
       
-      <div className="flex justify-center space-x-6 mt-6">
-         <div className="flex items-center"><div className="w-3 h-3 bg-blue-500 rounded-full mr-2 shadow-sm"></div><span className="text-xs font-bold text-gray-500 dark:text-gray-400">Tries</span></div>
-         <div className="flex items-center"><div className="w-3 h-3 bg-orange-500 rounded-full mr-2 shadow-sm"></div><span className="text-xs font-bold text-gray-500 dark:text-gray-400">Errors</span></div>
-         <div className="flex items-center"><div className="w-3 h-3 bg-red-500 rounded-full mr-2 shadow-sm"></div><span className="text-xs font-bold text-gray-500 dark:text-gray-400">Penalties</span></div>
+      <div className="flex justify-center space-x-8 mt-6">
+         <div className="flex items-center"><div className="w-3 h-3 bg-blue-500 rounded-full mr-2 shadow-sm"></div><span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Tries</span></div>
+         <div className="flex items-center"><div className="w-3 h-3 bg-orange-500 rounded-full mr-2 shadow-sm"></div><span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Errors</span></div>
+         <div className="flex items-center"><div className="w-3 h-3 bg-red-500 rounded-full mr-2 shadow-sm"></div><span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Penalties</span></div>
       </div>
     </div>
   );
