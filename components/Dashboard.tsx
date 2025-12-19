@@ -85,6 +85,8 @@ interface DashboardProps {
   playbook: PlaybookItem[];
   onAddPlaybookItem: (item: Omit<PlaybookItem, 'id'>) => void;
   onDeletePlaybookItem: (id: string) => void;
+  clubName: string;
+  onUpdateClubName: (name: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -112,7 +114,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteTrainingSession,
   playbook,
   onAddPlaybookItem,
-  onDeletePlaybookItem
+  onDeletePlaybookItem,
+  clubName,
+  onUpdateClubName
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   const [openMenuMatchId, setOpenMenuMatchId] = useState<string | null>(null);
@@ -132,15 +136,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [logoSrc, setLogoSrc] = useState('logo.png');
   const [logoError, setLogoError] = useState(false);
-  const [clubName, setClubName] = useState('');
   const [deleteMatchId, setDeleteMatchId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('RUGBY_TRACKER_LOGO');
     if (saved) { setLogoSrc(saved); setLogoError(false); }
-    const savedName = localStorage.getItem('RUGBY_TRACKER_CLUB_NAME');
-    if (savedName) setClubName(savedName);
   }, []);
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
@@ -183,7 +184,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="flex-1 flex flex-col items-center px-2 min-w-0">
-            <h2 className="text-center font-heading font-bold text-xl text-slate-900 dark:text-white uppercase tracking-wider w-full max-w-[300px] truncate">{clubName || 'ENTER TEAM NAME'}</h2>
+            <input 
+              type="text" 
+              value={clubName} 
+              onChange={(e) => onUpdateClubName(e.target.value)} 
+              placeholder="ENTER TEAM NAME" 
+              className="bg-transparent text-center font-heading font-bold text-xl text-slate-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none uppercase tracking-wider w-full max-w-[300px] truncate"
+            />
             <span className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-0.5">Coach: {currentUser}</span>
           </div>
 
@@ -273,11 +280,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 text-center">
                          <span className="block text-3xl font-heading font-black text-red-600 dark:text-red-400">{statsSummary.losses}</span>
-                         <span className="text-[10px] font-bold text-red-700/60 dark:text-green-400/60 uppercase tracking-wide">Losses</span>
+                         <span className="text-[10px] font-bold text-green-700/60 dark:text-green-400/60 uppercase tracking-wide">Losses</span>
                       </div>
                       <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/30 text-center">
                          <span className="block text-3xl font-heading font-black text-orange-600 dark:text-orange-400">{statsSummary.draws}</span>
-                         <span className="text-[10px] font-bold text-orange-700/60 dark:text-orange-400/60 uppercase tracking-wide">Draws</span>
+                         <span className="text-[10px] font-bold text-orange-700/60 dark:text-green-400/60 uppercase tracking-wide">Draws</span>
                       </div>
                    </div>
                 </div>
@@ -296,7 +303,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     const formattedDate = formatDisplayDate(match.date);
                     
                     return (
-                      <div key={match.id} className="group bg-white dark:bg-[#1A1A1C] rounded-2xl overflow-hidden shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all flex items-center border border-transparent hover:border-gray-100 dark:hover:border-white/5 h-24">
+                      <div key={match.id} className="group bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all flex items-center border border-transparent hover:border-gray-100 dark:hover:border-white/5 h-24">
                         <div className={`w-1.5 self-stretch ${match.result === 'win' ? 'bg-green-500' : match.result === 'loss' ? 'bg-red-500' : 'bg-orange-500'}`}></div>
                         
                         <div className="flex-1 px-6 flex items-center justify-between min-w-0 h-full">

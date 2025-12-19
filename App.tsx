@@ -22,6 +22,12 @@ import { CoachDrawer } from './components/CoachDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS, IMPACT_WEIGHTS } from './constants';
 
+// --- HELPERS ---
+// Firestore does not support 'undefined'. This utility strips undefined fields.
+const stripUndefined = (obj: any): any => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
 // --- INTERNAL MATCH TRACKER COMPONENT ---
 
 interface MatchTrackerProps {
@@ -33,7 +39,7 @@ interface MatchTrackerProps {
   onOpenDrawer: () => void;
   showBadge: boolean;
   pendingActionsCount: number;
-  onOpenSettings: () => void;
+  clubName: string;
 }
 
 const MatchTracker: React.FC<MatchTrackerProps> = ({ 
@@ -45,7 +51,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
   onOpenDrawer,
   showBadge,
   pendingActionsCount,
-  onOpenSettings
+  clubName
 }) => {
   const [players, setPlayers] = useState<Player[]>(initialState?.players || createInitialPlayers());
   const [gameLog, setGameLog] = useState<GameLogEntry[]>(initialState?.gameLog || []);
@@ -54,7 +60,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
   const [period, setPeriod] = useState<'1st' | '2nd'>(initialState?.period || '1st');
   const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
   const [homeScoreAdjustment, setHomeScoreAdjustment] = useState(initialState?.homeScoreAdjustment || 0);
-  const [teamName, setTeamName] = useState(initialState?.teamName || localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team');
+  const [teamName, setTeamName] = useState(initialState?.teamName || clubName || 'My Team');
   const [opponentName, setOpponentName] = useState(initialState?.opponentName || 'Opponent');
   
   const [completedSets, setCompletedSets] = useState(initialState?.completedSets || 0);
@@ -280,7 +286,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
            totalSets,
            homeScoreAdjustment
         },
-        voting: votes
+        voting: votes || null
      });
   };
 
@@ -356,16 +362,6 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
              </div>
 
              <div className="flex items-center gap-4 shrink-0">
-                <button 
-                   onClick={onOpenSettings} 
-                   className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-all"
-                   title="Match Settings"
-                >
-                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                   </svg>
-                </button>
                 <h1 className="font-heading font-black text-[10px] tracking-tight text-slate-900 dark:text-white uppercase">LeagueLens<span className="text-red-600">.</span></h1>
                 <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-95 transition-all">
                    {period === '1st' ? 'End 1st' : 'Finish'}
@@ -572,20 +568,49 @@ export const App: React.FC = () => {
   const handleFinishMatch = async (matchData: any) => {
     if (!user) return;
     try {
-      await addDoc(collection(db, `users/${user.uid}/matches`), matchData);
+      // Stripping 'undefined' values before sending to Firestore
+      const cleanedData = stripUndefined(matchData);
+      await addDoc(collection(db, `users/${user.uid}/matches`), cleanedData);
       await clearActiveMatchState();
       setActiveMatch(null);
       setHasResumableMatch(false);
     } catch (e) { console.error(e); }
   };
 
-  const handleAddSquadPlayer = async (p: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/squad`), { ...p, active: true, createdAt: Date.now() }); };
+  const handleAddSquadPlayer = async (p: any) => { 
+    if(!user) return; 
+    const cleaned = stripUndefined({ ...p, active: true, createdAt: Date.now() });
+    await addDoc(collection(db, `users/${user.uid}/squad`), cleaned); 
+  };
+  
   const handleRemoveSquadPlayer = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/squad`, id)); };
-  const handleUpdateSquadPlayer = async (id: string, updates: any) => { if(!user) return; await updateDoc(doc(db, `users/${user.uid}/squad`, id), updates); };
-  const handleSaveTraining = async (session: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/training`), session); };
-  const handleUpdateTraining = async (id: string, updates: any) => { if(!user) return; await updateDoc(doc(db, `users/${user.uid}/training`, id), updates); };
+  
+  const handleUpdateSquadPlayer = async (id: string, updates: any) => { 
+    if(!user) return; 
+    const cleaned = stripUndefined(updates);
+    await updateDoc(doc(db, `users/${user.uid}/squad`, id), cleaned); 
+  };
+  
+  const handleSaveTraining = async (session: any) => { 
+    if(!user) return; 
+    const cleaned = stripUndefined(session);
+    await addDoc(collection(db, `users/${user.uid}/training`), cleaned); 
+  };
+  
+  const handleUpdateTraining = async (id: string, updates: any) => { 
+    if(!user) return; 
+    const cleaned = stripUndefined(updates);
+    await updateDoc(doc(db, `users/${user.uid}/training`, id), cleaned); 
+  };
+  
   const handleDeleteTraining = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/training`, id)); };
-  const handleAddPlaybookItem = async (item: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/playbook`), item); };
+  
+  const handleAddPlaybookItem = async (item: any) => { 
+    if(!user) return; 
+    const cleaned = stripUndefined(item);
+    await addDoc(collection(db, `users/${user.uid}/playbook`), cleaned); 
+  };
+  
   const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
   const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
 
@@ -596,7 +621,7 @@ export const App: React.FC = () => {
         const time = activeMatch.matchTime;
         matchTimestamp = `[${Math.floor(time / 60).toString().padStart(2, '0')}:${(time % 60).toString().padStart(2, '0')}]`;
      }
-     await addDoc(collection(db, `users/${user.uid}/actions`), {
+     const actionData = {
         content,
         category,
         assignedCoachId: coaches[0]?.id || '',
@@ -604,7 +629,8 @@ export const App: React.FC = () => {
         timestamp: new Date().toISOString(),
         matchTimestamp,
         createdAt: Date.now()
-     });
+     };
+     await addDoc(collection(db, `users/${user.uid}/actions`), stripUndefined(actionData));
   };
 
   const handleToggleAction = async (id: string) => {
@@ -632,7 +658,7 @@ export const App: React.FC = () => {
      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
      const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600', 'bg-orange-600', 'bg-indigo-600'];
      const color = colors[coaches.length % colors.length];
-     await addDoc(collection(db, `users/${user.uid}/coaches`), { name, initials, color });
+     await addDoc(collection(db, `users/${user.uid}/coaches`), stripUndefined({ name, initials, color }));
   };
 
   const handleDeleteCoach = async (id: string) => {
@@ -643,6 +669,10 @@ export const App: React.FC = () => {
   const handleOpenDrawer = () => {
     setIsDrawerOpen(true);
     setHasViewedActions(true);
+  };
+
+  const updateClubName = (name: string) => {
+     setSettings(prev => ({ ...prev, clubName: name }));
   };
 
   const pendingActionsCount = actions.filter(a => !a.isCompleted).length;
@@ -661,7 +691,7 @@ export const App: React.FC = () => {
         onOpenDrawer={handleOpenDrawer}
         showBadge={showNotificationBadge}
         pendingActionsCount={pendingActionsCount}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        clubName={stripUndefined(settings.clubName)}
       />
       <CoachDrawer 
         isOpen={isDrawerOpen} 
@@ -726,7 +756,6 @@ export const App: React.FC = () => {
         showBadge={showNotificationBadge}
         pendingActionsCount={pendingActionsCount}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        /* Correctly passing the missing training and playbook props to Dashboard */
         trainingHistory={trainingHistory}
         onSaveTrainingSession={handleSaveTraining}
         onUpdateTrainingSession={handleUpdateTraining}
@@ -734,6 +763,8 @@ export const App: React.FC = () => {
         playbook={playbook}
         onAddPlaybookItem={handleAddPlaybookItem}
         onDeletePlaybookItem={handleDeletePlaybookItem}
+        clubName={stripUndefined(settings.clubName)}
+        onUpdateClubName={updateClubName}
       />
       {editingVoteMatch && (
         <VotingModal 
@@ -743,7 +774,7 @@ export const App: React.FC = () => {
           isEditing={true}
           onConfirm={async (votes) => {
             if (!user) return;
-            await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), { voting: votes });
+            await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), { voting: stripUndefined(votes) });
             setEditingVoteMatch(null);
           }}
           onSkip={() => setEditingVoteMatch(null)}
