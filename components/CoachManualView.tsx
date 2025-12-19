@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 type Section = 'philosophy' | 'skills' | 'tactics' | 'positions' | 'age-groups';
@@ -41,8 +40,8 @@ export const CoachManualView: React.FC = () => {
             />
             <SectionButton 
               id="tactics" 
-              label="Attack & Defense" 
-              icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>} 
+              label="Attack & Defence" 
+              icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>} 
             />
             <SectionButton 
               id="positions" 
@@ -174,7 +173,7 @@ export const CoachManualView: React.FC = () => {
               <div className="bg-white dark:bg-[#1A1A1C] border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden">
                 <div className="bg-gray-50 dark:bg-white/5 px-6 py-3 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
                   <h3 className="font-bold text-slate-900 dark:text-white">Front On Tackle</h3>
-                  <span className="text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded uppercase">Defense</span>
+                  <span className="text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded uppercase">Defence</span>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -227,7 +226,7 @@ export const CoachManualView: React.FC = () => {
                   <p className="text-xs text-white/70">Push through the line. Be an option even if you don't get the ball. It holds defenders.</p>
                 </div>
                 <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
-                  <span className="font-bold text-red-400 block mb-1">Defense: Kick Chase</span>
+                  <span className="font-bold text-red-400 block mb-1">Defence: Kick Chase</span>
                   <p className="text-xs text-white/70">One straight line. Build pressure on the first two tackles. Don't wait for the ball.</p>
                 </div>
                 <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
@@ -235,7 +234,7 @@ export const CoachManualView: React.FC = () => {
                   <p className="text-xs text-white/70">Fight to your knees/elbows. Clear separation. Generate momentum.</p>
                 </div>
                 <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
-                  <span className="font-bold text-red-400 block mb-1">Defense: Fill The Space</span>
+                  <span className="font-bold text-red-400 block mb-1">Defence: Fill The Space</span>
                   <p className="text-xs text-white/70">"A" Defender must plug the hole when the marker leaves. Don't spectate.</p>
                 </div>
               </div>
@@ -260,12 +259,12 @@ export const CoachManualView: React.FC = () => {
               </ul>
             </div>
 
-            {/* Defense Principles */}
+            {/* Defence Principles */}
             <div className="space-y-4">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white border-l-4 border-red-500 pl-3">Principles of Defense</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white border-l-4 border-red-500 pl-3">Principles of Defence</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border border-gray-200 dark:border-white/10 p-4 rounded-xl">
-                  <h4 className="font-bold text-sm mb-2">Marker Defense</h4>
+                  <h4 className="font-bold text-sm mb-2">Marker Defence</h4>
                   <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1 list-disc ml-4">
                     <li>Be verbal. Communicate.</li>
                     <li>First marker tracks ball (don't overchase).</li>
@@ -279,7 +278,7 @@ export const CoachManualView: React.FC = () => {
                     <li>Line Speed: Move up together (Grenade).</li>
                     <li>Spacing: Trust your inside man.</li>
                     <li>Slide vs Wedge: Know the system.</li>
-                    <li>Attitude: Defense is a choice.</li>
+                    <li>Attitude: Defence is a choice.</li>
                   </ul>
                 </div>
               </div>
@@ -303,21 +302,21 @@ export const CoachManualView: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white">Fullback (1):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Support play is key. High work rate. Regroup and attack multiple times per set. Good kick return.<br/>
-                      <strong>Defense:</strong> The General. Organizes the line. Last line of defense. Catch on the full.
+                      <strong>Defence:</strong> The General. Organizes the line. Last line of defence. Catch on the full.
                     </p>
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white">Halves (6, 7):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Play to structure but play what you see (Eyes Up). Excellent catch/pass. Direction and kicking game.<br/>
-                      <strong>Defense:</strong> Must be strong 1-on-1. Communicate numbers.
+                      <strong>Defence:</strong> Must be strong 1-on-1. Communicate numbers.
                     </p>
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white">Hooker (9):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Service is priority #1. Choosing when to run vs pass. Identifying markers not square.<br/>
-                      <strong>Defense:</strong> High work rate. Lead the kick chase. "A" defender control.
+                      <strong>Defence:</strong> High work rate. Lead the kick chase. "A" defender control.
                     </p>
                   </div>
                 </div>
@@ -331,14 +330,14 @@ export const CoachManualView: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white">Wingers (2, 5):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Start sets well (Kick returns). Finish tries. Look for work in yardage.<br/>
-                      <strong>Defense:</strong> Positional play for kicks. Trust inside man. Decision making (jam or slide).
+                      <strong>Defence:</strong> Positional play for kicks. Trust inside man. Decision making (jam or slide).
                     </p>
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white">Centres (3, 4):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Strike power. Line running. Draw and pass to winger.<br/>
-                      <strong>Defense:</strong> 1-on-1 tackling ability. Reading the attack.
+                      <strong>Defence:</strong> 1-on-1 tackling ability. Reading the attack.
                     </p>
                   </div>
                 </div>
@@ -352,14 +351,14 @@ export const CoachManualView: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white">Props (8, 10):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Go forward. Generate PTB speed. Draw defenders.<br/>
-                      <strong>Defense:</strong> Control the middle. Intimidate. Slow the ruck.
+                      <strong>Defence:</strong> Control the middle. Intimidate. Slow the ruck.
                     </p>
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white">Second Row (11, 12):</span>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                       <strong>Attack:</strong> Line running on edges. Support play. Offloads.<br/>
-                      <strong>Defense:</strong> Workaholic. Cover inside and out.
+                      <strong>Defence:</strong> Workaholic. Cover inside and out.
                     </p>
                   </div>
                   <div>

@@ -1,4 +1,3 @@
-
 export interface PlayerIdentity {
   name: string;
   number: string;
@@ -95,7 +94,7 @@ export interface MatchHistoryItem {
 
 // --- LEAGUE HUB TYPES ---
 
-export type DrillCategory = 'Attack' | 'Defense' | 'Fitness' | 'Core Skills' | 'Kicking';
+export type DrillCategory = 'Attack' | 'Defence' | 'Fitness' | 'Core Skills' | 'Kicking';
 export type DrillDifficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
 export interface Drill {
@@ -160,4 +159,26 @@ export interface TacticFrame {
 export interface TacticsData {
   frames: TacticFrame[];
   pitchType: 'full' | 'half';
+}
+
+// --- COACHING NOTES & ACTIONS ---
+
+export type ActionCategory = 'Tactical' | 'Logistics' | 'Medical' | 'Admin';
+
+export interface Coach {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+}
+
+export interface ActionItem {
+  id: string;
+  content: string;
+  category: ActionCategory;
+  assignedCoachId: string;
+  isCompleted: boolean;
+  timestamp: string; // ISO string
+  matchTimestamp?: string; // e.g. "[24:15]"
+  createdAt: number;
 }

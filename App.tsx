@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AuthScreen } from './components/AuthScreen';
 import { Dashboard } from './components/Dashboard';
 import { MatchCharts } from './components/MatchCharts';
-import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem, Player, GameLogEntry, StatKey, PlayerStats } from './types';
+import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem, Player, GameLogEntry, StatKey, PlayerStats, ActionItem, Coach, ActionCategory } from './types';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, orderBy, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, orderBy, setDoc } from 'firebase/firestore';
 import { saveActiveMatchState, loadActiveMatchState, clearActiveMatchState } from './dbUtils';
 import { TeamSelectionModal } from './components/TeamSelectionModal';
 import { PlayerRow } from './components/PlayerRow';
@@ -18,7 +18,8 @@ import { BigPlayModal } from './components/BigPlayModal';
 import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NotificationModal } from './components/NotificationModal';
 import { VotingModal } from './components/VotingModal';
-import { createInitialPlayers, INITIAL_STATS } from './constants';
+import { CoachDrawer } from './components/CoachDrawer';
+import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS } from './constants';
 
 // --- INTERNAL MATCH TRACKER COMPONENT ---
 
@@ -28,9 +29,21 @@ interface MatchTrackerProps {
   onFinish: (matchData: any) => void;
   onDiscard: () => void;
   onExit: () => void;
+  onOpenDrawer: () => void;
+  showBadge: boolean;
+  pendingActionsCount: number;
 }
 
-const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFinish, onDiscard, onExit }) => {
+const MatchTracker: React.FC<MatchTrackerProps> = ({ 
+  initialState, 
+  squad, 
+  onFinish, 
+  onDiscard, 
+  onExit,
+  onOpenDrawer,
+  showBadge,
+  pendingActionsCount
+}) => {
   const [players, setPlayers] = useState<Player[]>(initialState?.players || createInitialPlayers());
   const [gameLog, setGameLog] = useState<GameLogEntry[]>(initialState?.gameLog || []);
   const [matchTime, setMatchTime] = useState(initialState?.matchTime || 0);
@@ -249,37 +262,33 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   };
 
   const finishMatch = (votes: any) => {
-     try {
-       const matchData = {
-          date: new Date().toISOString().split('T')[0],
-          teamName: teamName || 'My Team',
-          opponentName: opponentName || 'Opponent',
-          finalScore: `${teamScore} - ${opponentScore}`,
-          result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
-          data: {
-             players: JSON.parse(JSON.stringify(players)),
-             gameLog: JSON.parse(JSON.stringify(gameLog)),
-             matchTime,
-             period,
-             sets: { completed: completedSets, total: totalSets },
-             homeScoreAdjustment
-          },
-          voting: votes || null
-       };
-       onFinish(matchData);
-     } catch (err) {
-       console.error("Error finishing match:", err);
-     }
+     onFinish({
+        date: new Date().toISOString().split('T')[0],
+        teamName,
+        opponentName,
+        finalScore: `${teamScore} - ${opponentScore}`,
+        result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
+        data: {
+           players,
+           gameLog,
+           matchTime,
+           period,
+           completedSets,
+           totalSets,
+           homeScoreAdjustment
+        },
+        voting: votes
+     });
   };
 
   const handleSetComplete = () => {
-     if (!isRunning) { setTimerError(true); setTimeout(() => setTimerError(false), 500); return; }
+     if (!isRunning) return;
      setCompletedSets(prev => prev + 1);
      setTotalSets(prev => prev + 1);
   };
 
   const handleSetIncomplete = () => {
-     if (!isRunning) { setTimerError(true); setTimeout(() => setTimerError(false), 500); return; }
+     if (!isRunning) return;
      setTotalSets(prev => prev + 1);
   };
 
@@ -302,102 +311,68 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-midnight-950 font-sans transition-colors duration-300 overflow-hidden">
-       {/* BROADCAST HEADER - COMPACT BUT LEGIBLE */}
-       <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-sm z-40 py-2">
-          <div className="w-full max-w-[1920px] mx-auto px-4 flex items-center justify-between gap-4">
-             {/* Left Side: Nav & Timer */}
+       {/* COMPACT HEADER TO SAVE SPACE */}
+       <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-md z-40 py-2">
+          <div className="w-full max-w-[1920px] mx-auto px-6 flex items-center justify-between gap-2">
              <div className="flex items-center gap-3 shrink-0">
-                 <button onClick={onExit} className="w-8 h-8 flex items-center justify-center rounded bg-gray-50 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 transition-colors">
+                 <button onClick={onExit} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 transition-colors border border-gray-200 dark:border-midnight-600">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
                  </button>
                  <button 
                    onClick={() => setIsRunning(!isRunning)}
-                   className={`px-4 py-1.5 rounded-lg border-2 transition-all active:scale-95 flex items-center gap-3 ${isRunning ? 'bg-white text-red-500 border-red-500 shadow-sm' : 'bg-green-500 text-white border-green-600 shadow-sm'} ${timerError ? 'animate-shake' : ''}`}
+                   className={`px-4 py-1.5 rounded-xl border-2 transition-all active:scale-95 flex items-center gap-3 shadow-md ${isRunning ? 'bg-white text-red-500 border-red-500' : 'bg-green-500 text-white border-green-600'} ${timerError ? 'animate-shake' : ''}`}
                  >
-                    <span className="text-3xl font-jersey font-medium tracking-widest leading-none pt-1">{formattedTime}</span>
+                    <span className="text-3xl font-jersey font-medium tracking-wider leading-none pt-0.5">{formattedTime}</span>
                     <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-white'}`}></div>
                  </button>
              </div>
 
-             {/* Center: Unified Score Bug */}
-             <div className="flex-1 flex items-center justify-center gap-6 px-4 overflow-hidden">
-                <div className="flex items-center bg-gray-50 dark:bg-midnight-900 px-4 py-1.5 rounded-xl border border-gray-100 dark:border-midnight-700 shadow-inner">
-                   {/* Home Side */}
-                   <div className="flex items-center gap-3">
-                      <input 
-                        value={teamName} 
-                        onChange={(e) => setTeamName(e.target.value)} 
-                        className="bg-transparent text-right font-heading font-black text-sm md:text-base text-slate-800 dark:text-white w-24 md:w-40 focus:outline-none truncate" 
-                      />
-                      <input 
-                        type="number" 
-                        value={teamScore} 
-                        onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)} 
-                        className="text-4xl font-jersey font-bold text-blue-600 dark:text-neon-blue w-14 text-center bg-transparent outline-none pt-1" 
-                      />
+             <div className="flex-1 flex items-center justify-center gap-6 px-2 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0">
+                   <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="bg-transparent text-right font-heading font-black text-sm md:text-lg text-slate-800 dark:text-white w-20 md:w-40 focus:outline-none truncate" />
+                   <input type="number" value={teamScore} onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)} className="text-4xl font-jersey font-black text-blue-600 dark:text-neon-blue w-14 text-center bg-transparent outline-none pt-0.5" />
+                </div>
+                <div className="text-gray-300 font-light text-2xl">-</div>
+                <div className="flex items-center gap-2 min-w-0">
+                   <div className="flex items-center">
+                     <input type="number" value={opponentScore} onChange={(e) => setOpponentScore(Math.max(0, parseInt(e.target.value) || 0))} className="text-4xl font-jersey font-black text-red-500 dark:text-red-400 w-14 text-center bg-transparent outline-none pt-0.5" />
+                     <div className="flex flex-col gap-0.5 ml-0.5">
+                        <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-6 h-4 bg-red-600 text-white rounded text-[8px] font-black shadow-sm">+T</button>
+                        <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-6 h-4 bg-slate-200 dark:bg-midnight-700 text-slate-600 dark:text-gray-300 rounded text-[8px] font-black shadow-sm">+K</button>
+                     </div>
                    </div>
-
-                   <div className="text-gray-300 font-light px-4 text-2xl">-</div>
-
-                   {/* Away Side */}
-                   <div className="flex items-center gap-3">
-                      <div className="flex items-center">
-                         <input 
-                           type="number" 
-                           value={opponentScore} 
-                           onChange={(e) => setOpponentScore(Math.max(0, parseInt(e.target.value) || 0))} 
-                           className="text-4xl font-jersey font-bold text-red-500 dark:text-red-400 w-14 text-center bg-transparent outline-none pt-1" 
-                         />
-                         <div className="flex flex-col gap-0.5 ml-1">
-                            <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-6 h-5 bg-red-600 text-white rounded text-[8px] font-black hover:bg-red-700 transition-colors">+T</button>
-                            <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-6 h-5 bg-gray-200 dark:bg-midnight-700 text-slate-600 dark:text-gray-300 rounded text-[8px] font-black hover:bg-gray-300 transition-colors">+K</button>
-                         </div>
-                      </div>
-                      <input 
-                        value={opponentName} 
-                        onChange={(e) => setOpponentName(e.target.value)} 
-                        className="bg-transparent text-left font-heading font-black text-sm md:text-base text-slate-800 dark:text-white w-24 md:w-40 focus:outline-none truncate" 
-                      />
-                   </div>
+                   <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} className="bg-transparent text-left font-heading font-black text-sm md:text-lg text-slate-800 dark:text-white w-20 md:w-40 focus:outline-none truncate" />
                 </div>
 
-                {/* Inline Sets Display */}
-                <div className={`hidden sm:flex items-center gap-3 bg-white dark:bg-midnight-800 px-4 py-1.5 rounded-xl border border-gray-200 dark:border-midnight-700 shadow-sm ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
-                   <button onClick={handleSetComplete} className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95 transition-all"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M5 13l4 4L19 7" /></svg></button>
-                   <div className="font-jersey text-2xl tracking-widest text-slate-900 dark:text-white pt-1">{completedSets}/{totalSets} <span className="text-[10px] uppercase font-bold text-gray-400 ml-1">Sets</span></div>
-                   <button onClick={handleSetIncomplete} className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95 transition-all"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <div className="w-px h-8 bg-gray-200 dark:bg-white/10 hidden xl:block"></div>
+
+                <div className={`hidden sm:flex items-center gap-3 bg-gray-50 dark:bg-white/5 px-3 py-1 rounded-xl border border-gray-100 dark:border-white/10 shadow-inner ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
+                   <button onClick={handleSetComplete} className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95 shadow-sm"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M5 13l4 4L19 7" /></svg></button>
+                   <div className="font-jersey text-2xl tracking-widest text-slate-900 dark:text-white pt-0.5">{completedSets}/{totalSets} <span className="ml-0.5 text-[8px] font-black uppercase text-gray-400">Sets</span></div>
+                   <button onClick={handleSetIncomplete} className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95 shadow-sm"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
              </div>
 
-             {/* Right Side: Branding & Finish */}
              <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden lg:flex flex-col items-end leading-tight">
-                   <span className="text-[10px] font-black uppercase text-gray-400 tracking-tighter">Period</span>
-                   <span className="text-sm font-bold text-slate-900 dark:text-white">{period === '1st' ? '1st HALF' : '2nd HALF'}</span>
-                </div>
-                <button 
-                  onClick={handlePeriodEnd}
-                  className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black uppercase tracking-widest rounded-lg shadow-md active:scale-95 transition-all whitespace-nowrap"
-                >
-                   {period === '1st' ? 'End Half' : 'Finish Match'}
-                </button>
+                <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-95 transition-all">
+                   {period === '1st' ? 'End 1st' : 'Finish'}
+                </Button>
              </div>
           </div>
        </header>
 
-       {/* MAIN CONTENT AREA - OPTIMIZED DENSITY */}
-       <main className={`flex-1 flex flex-col min-h-0 w-full max-w-[1920px] mx-auto px-2 pt-2 transition-all duration-300 ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
-          <div className="flex-1 bg-white dark:bg-midnight-800 rounded-t-xl shadow-sm border border-gray-200 dark:border-midnight-700 overflow-hidden flex flex-col min-h-0">
+       <main className={`flex-1 flex flex-col min-h-0 w-full max-w-[1920px] mx-auto px-1.5 pt-1.5 transition-all duration-300 ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+          <div className="flex-1 bg-white dark:bg-midnight-800 rounded-t-xl shadow-2xl border-x border-t border-gray-200 dark:border-midnight-700 overflow-hidden flex flex-col min-h-0">
              <div className="flex-1 overflow-auto custom-scrollbar relative">
                <table className="w-full min-w-max border-collapse text-left">
                   <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-200 dark:border-midnight-700 sticky top-0 z-20">
                      <tr>
-                        <th className="p-2 text-left w-14 sticky left-0 z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[10px] font-black text-gray-400 uppercase tracking-widest pl-3">#</th>
-                        <th className="p-2 text-left min-w-[160px] sticky left-[56px] z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[10px] font-black text-gray-400 uppercase tracking-widest pl-3">Player</th>
-                        {Object.keys(INITIAL_STATS).slice(0, 6).map(k => (
-                           <th key={k} className="p-2 text-center min-w-[95px] text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tight">{k.replace(/([A-Z])/g, ' $1').trim()}</th>
+                        <th className="p-1.5 text-left w-14 sticky left-0 z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[9px] font-black text-gray-400 uppercase tracking-widest pl-3">#</th>
+                        <th className="p-1.5 text-left min-w-[160px] sticky left-[56px] z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[9px] font-black text-gray-400 uppercase tracking-widest pl-3">Player</th>
+                        {STAT_CONFIGS.map(sc => (
+                           <th key={sc.key} className="p-1.5 text-center min-w-[100px] text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{sc.label}</th>
                         ))}
-                        <th className="p-2 text-center min-w-[85px] w-20 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[10px] tracking-widest">Impact</th>
+                        <th className="p-1.5 text-center min-w-[90px] w-20 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[9px] tracking-widest">Impact</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-midnight-700">
@@ -423,27 +398,45 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
           </div>
        </main>
 
-       {/* FLOATING FOOTER */}
-       <div className={`shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-md border-t border-gray-200 dark:border-midnight-700 p-2 z-50 transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+       {/* REFINED COMPACT FOOTER */}
+       <div className={`shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-midnight-700 p-2 z-50 shadow-2xl transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
           <div className="max-w-4xl mx-auto flex items-center justify-center space-x-3">
-             <button onClick={() => setIsLogOpen(true)} className="flex items-center justify-center w-10 h-10 bg-gray-50 dark:bg-midnight-800 rounded-xl border border-gray-200 dark:border-midnight-700 shadow-sm active:scale-95 transition-all">
+             <button onClick={() => setIsLogOpen(true)} className="flex items-center justify-center w-10 h-10 bg-gray-50 dark:bg-midnight-800 rounded-xl border border-gray-200 dark:border-midnight-600 shadow-sm active:scale-95 transition-all">
                 <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
              </button>
-             <button onClick={() => setCardModal({ isOpen: true, type: 'yellow' })} className="flex items-center justify-center px-4 h-10 bg-yellow-50 rounded-xl border border-yellow-200 active:scale-95 transition-all">
-                <div className="w-3.5 h-5 bg-yellow-400 rounded-sm mr-2.5 border border-yellow-600"></div>
-                <span className="text-[10px] font-black uppercase text-yellow-700 tracking-widest">Sin Bin</span>
+             
+             <button 
+                onClick={onOpenDrawer}
+                className="relative flex items-center justify-center w-10 h-10 bg-slate-900 text-white rounded-xl border border-slate-700 shadow-md active:scale-95 transition-all"
+             >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                {showBadge && (
+                   <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5">
+                      <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 border-2 border-white text-[9px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
+                   </span>
+                )}
              </button>
-             <button onClick={() => setCardModal({ isOpen: true, type: 'red' })} className="flex items-center justify-center px-4 h-10 bg-red-50 rounded-xl border border-red-200 active:scale-95 transition-all">
-                <div className="w-3.5 h-5 bg-red-600 rounded-sm mr-2.5 border border-red-800"></div>
-                <span className="text-[10px] font-black uppercase text-red-700 tracking-widest">Off Field</span>
+
+             <button onClick={() => setCardModal({ isOpen: true, type: 'yellow' })} className="flex items-center justify-center px-3 h-10 bg-yellow-50 rounded-xl border border-yellow-200 active:scale-95 transition-all shadow-sm">
+                <div className="w-3 h-4.5 bg-yellow-400 rounded-sm mr-1.5 border border-yellow-600 shadow-sm"></div>
+                <span className="text-[10px] font-black uppercase text-yellow-700 tracking-wider">Bin</span>
              </button>
-             <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-2"></div>
+
+             <button onClick={() => setCardModal({ isOpen: true, type: 'red' })} className="flex items-center justify-center px-3 h-10 bg-red-50 rounded-xl border border-red-200 active:scale-95 transition-all shadow-sm">
+                <div className="w-3 h-4.5 bg-red-600 rounded-sm mr-1.5 border border-red-800 shadow-sm"></div>
+                <span className="text-[10px] font-black uppercase text-red-700 tracking-wider">Off</span>
+             </button>
+
+             <div className="w-px h-8 bg-gray-200 dark:bg-white/10 mx-1"></div>
+
              <button 
                onClick={() => setBigPlayModal({ isOpen: true, playerId: players.find(p => p.isOnField)?.id || players[0].id })} 
-               className="flex-1 h-12 bg-slate-900 dark:bg-white rounded-xl shadow-lg flex items-center justify-center space-x-3 active:scale-95 group transition-all"
+               className="flex-1 h-12 bg-slate-900 dark:bg-white rounded-xl shadow-xl flex items-center justify-center space-x-2 active:scale-95 group transition-all"
              >
                 <span className="text-2xl group-hover:animate-pulse">⚡</span>
-                <span className="text-white dark:text-slate-900 font-heading font-black text-sm uppercase tracking-[0.15em]">Impact Play</span>
+                <span className="text-white dark:text-slate-900 font-heading font-black text-sm uppercase tracking-widest">Impact Play</span>
              </button>
           </div>
        </div>
@@ -466,6 +459,12 @@ export const App: React.FC = () => {
   const [trainingHistory, setTrainingHistory] = useState<TrainingSession[]>([]);
   const [playbook, setPlaybook] = useState<PlaybookItem[]>([]);
   
+  // Coach Drawer State
+  const [actions, setActions] = useState<ActionItem[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hasViewedActions, setHasViewedActions] = useState(false);
+
   const [activeMatch, setActiveMatch] = useState<any>(null);
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -477,7 +476,15 @@ export const App: React.FC = () => {
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) { setSquad([]); setHistory([]); setTrainingHistory([]); setPlaybook([]); }
+      if (!u) { 
+        setSquad([]); 
+        setHistory([]); 
+        setTrainingHistory([]); 
+        setPlaybook([]); 
+        setActions([]); 
+        setCoaches([]); 
+        setHasViewedActions(false); // Reset on logout
+      }
     });
   }, []);
 
@@ -508,7 +515,13 @@ export const App: React.FC = () => {
     const unsubPlaybook = onSnapshot(query(collection(db, `users/${user.uid}/playbook`), orderBy('createdAt', 'desc')), (snap) => {
         setPlaybook(snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem)));
     });
-    return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); };
+    const unsubActions = onSnapshot(query(collection(db, `users/${user.uid}/actions`), orderBy('createdAt', 'desc')), (snap) => {
+        setActions(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActionItem)));
+    });
+    const unsubCoaches = onSnapshot(query(collection(db, `users/${user.uid}/coaches`), orderBy('name')), (snap) => {
+        setCoaches(snap.docs.map(d => ({ id: d.id, ...d.data() } as Coach)));
+    });
+    return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); unsubActions(); unsubCoaches(); };
   }, [user]);
 
   const handleNewMatch = () => setActiveMatch({});
@@ -539,16 +552,95 @@ export const App: React.FC = () => {
   const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
   const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
 
+  // Coach Drawer Handlers
+  const handleAddAction = async (content: string, category: ActionCategory) => {
+     if (!user) return;
+     
+     let matchTimestamp: string | null = null;
+     if (activeMatch && typeof activeMatch.matchTime === 'number') {
+        const time = activeMatch.matchTime;
+        matchTimestamp = `[${Math.floor(time / 60).toString().padStart(2, '0')}:${(time % 60).toString().padStart(2, '0')}]`;
+     }
+     
+     await addDoc(collection(db, `users/${user.uid}/actions`), {
+        content,
+        category,
+        assignedCoachId: coaches[0]?.id || '',
+        isCompleted: false,
+        timestamp: new Date().toISOString(),
+        matchTimestamp,
+        createdAt: Date.now()
+     });
+  };
+
+  const handleToggleAction = async (id: string) => {
+     if (!user) return;
+     const item = actions.find(a => a.id === id);
+     if (item) await updateDoc(doc(db, `users/${user.uid}/actions`, id), { isCompleted: !item.isCompleted });
+  };
+
+  const handleDeleteAction = async (id: string) => {
+     if (!user) return;
+     await deleteDoc(doc(db, `users/${user.uid}/actions`, id));
+  };
+
+  const handleCycleCoach = async (actionId: string) => {
+     if (!user || coaches.length === 0) return;
+     const action = actions.find(a => a.id === actionId);
+     if (!action) return;
+     const currentIndex = coaches.findIndex(c => c.id === action.assignedCoachId);
+     const nextIndex = (currentIndex + 1) % coaches.length;
+     await updateDoc(doc(db, `users/${user.uid}/actions`, actionId), { assignedCoachId: coaches[nextIndex].id });
+  };
+
+  const handleAddCoach = async (name: string) => {
+     if (!user) return;
+     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+     const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600', 'bg-orange-600', 'bg-indigo-600'];
+     const color = colors[coaches.length % colors.length];
+     await addDoc(collection(db, `users/${user.uid}/coaches`), { name, initials, color });
+  };
+
+  const handleDeleteCoach = async (id: string) => {
+     if (!user) return;
+     await deleteDoc(doc(db, `users/${user.uid}/coaches`, id));
+  };
+
+  const handleOpenDrawer = () => {
+    setIsDrawerOpen(true);
+    setHasViewedActions(true);
+  };
+
+  const pendingActionsCount = actions.filter(a => !a.isCompleted).length;
+  const showNotificationBadge = pendingActionsCount > 0 && !hasViewedActions;
+
   if (!user) return <AuthScreen onLogin={setUser} />;
 
   if (activeMatch) return (
-    <MatchTracker 
-      initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
-      squad={activeSquad}
-      onFinish={handleFinishMatch}
-      onDiscard={handleDiscardMatch}
-      onExit={handleExitMatch}
-    />
+    <>
+      <MatchTracker 
+        initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
+        squad={activeSquad}
+        onFinish={handleFinishMatch}
+        onDiscard={handleDiscardMatch}
+        onExit={handleExitMatch}
+        onOpenDrawer={handleOpenDrawer}
+        showBadge={showNotificationBadge}
+        pendingActionsCount={pendingActionsCount}
+      />
+      <CoachDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)}
+        actions={actions}
+        coaches={coaches}
+        onAddAction={handleAddAction}
+        onToggleAction={handleToggleAction}
+        onDeleteAction={handleDeleteAction}
+        onCycleCoach={handleCycleCoach}
+        onAddCoach={handleAddCoach}
+        onDeleteCoach={handleDeleteCoach}
+      />
+    </>
   );
 
   if (viewingMatch) {
@@ -597,6 +689,9 @@ export const App: React.FC = () => {
         playbook={playbook}
         onAddPlaybookItem={handleAddPlaybookItem}
         onDeletePlaybookItem={handleDeletePlaybookItem}
+        onOpenDrawer={handleOpenDrawer}
+        showBadge={showNotificationBadge}
+        pendingActionsCount={pendingActionsCount}
       />
       {editingVoteMatch && (
         <VotingModal 
@@ -612,6 +707,18 @@ export const App: React.FC = () => {
           onSkip={() => setEditingVoteMatch(null)}
         />
       )}
+      <CoachDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)}
+        actions={actions}
+        coaches={coaches}
+        onAddAction={handleAddAction}
+        onToggleAction={handleToggleAction}
+        onDeleteAction={handleDeleteAction}
+        onCycleCoach={handleCycleCoach}
+        onAddCoach={handleAddCoach}
+        onDeleteCoach={handleDeleteCoach}
+      />
     </>
   );
 };

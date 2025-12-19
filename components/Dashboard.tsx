@@ -83,6 +83,9 @@ interface DashboardProps {
   playbook?: PlaybookItem[];
   onAddPlaybookItem?: (item: Omit<PlaybookItem, 'id'>) => void;
   onDeletePlaybookItem?: (id: string) => void;
+  onOpenDrawer: () => void;
+  showBadge: boolean;
+  pendingActionsCount: number;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -108,7 +111,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteTrainingSession = () => {},
   playbook = [],
   onAddPlaybookItem = () => {},
-  onDeletePlaybookItem = () => {}
+  onDeletePlaybookItem = () => {},
+  onOpenDrawer,
+  showBadge,
+  pendingActionsCount
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   const [openMenuMatchId, setOpenMenuMatchId] = useState<string | null>(null);
@@ -197,6 +203,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-3 shrink-0 justify-end pl-4">
+             {/* Coach's Clipboard Button */}
+             <button 
+                onClick={onOpenDrawer}
+                className="relative w-11 h-11 flex items-center justify-center bg-slate-900 text-white rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-slate-800"
+                title="Coach's Clipboard"
+             >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                {showBadge && (
+                   <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                      <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 border-2 border-white text-[10px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
+                   </span>
+                )}
+             </button>
+
              <button 
                onClick={() => setShowGuideModal(true)} 
                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-white/10 rounded-full transition-all"
@@ -204,13 +226,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
              >
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
              </button>
-             <button 
-               onClick={() => setCurrentTab('squad')} 
-               className="w-11 h-11 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-white/10 rounded-full transition-all"
-               title="Quick Add Player"
-             >
-               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-             </button>
+             
              <div className="h-6 w-px bg-gray-200 dark:bg-white/10 hidden sm:block mx-1"></div>
              <button onClick={onLogout} className="text-xs font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors bg-red-50 dark:bg-white/10 dark:text-red-400 w-11 h-11 sm:w-auto sm:px-4 sm:py-2 rounded-full flex items-center justify-center">
                <span className="hidden sm:inline">Log Out</span>

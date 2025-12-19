@@ -52,7 +52,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     statusBadge = (
       <button 
         onClick={() => !isReadOnly && onRemoveCard(player.id)}
-        className="mt-1 text-[8px] font-black bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all"
+        className="mt-0.5 text-[7px] font-black bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all"
       >
         BIN ✕
       </button>
@@ -63,7 +63,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     statusBadge = (
       <button 
         onClick={() => !isReadOnly && onRemoveCard(player.id)}
-        className="mt-1 text-[8px] font-black bg-red-600 text-white px-1.5 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all"
+        className="mt-0.5 text-[7px] font-black bg-red-600 text-white px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all"
       >
         OFF ✕
       </button>
@@ -73,7 +73,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
       <button
         onClick={() => !isReadOnly && onToggleFieldStatus(player.id)}
         disabled={isReadOnly}
-        className={`mt-1 text-[8px] font-black uppercase px-2 py-0.5 rounded border transition-all active:scale-95 ${
+        className={`mt-0.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border-2 transition-all active:scale-95 ${
           player.isOnField 
             ? 'bg-green-50 text-green-600 border-green-200 shadow-sm' 
             : 'bg-red-50 text-red-500 border-red-200 shadow-sm'
@@ -111,10 +111,10 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   else if (impactScore < 0) impactColor = 'bg-red-600 text-white border-none shadow-sm';
 
   return (
-    <tr className={`${rowClass} border-b border-gray-100 dark:border-midnight-700 transition-colors h-[64px]`}>
+    <tr className={`${rowClass} border-b border-gray-100 dark:border-midnight-700 transition-colors h-[70px]`}>
       <td className={`p-1 sticky left-0 z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
         <div className="flex flex-col items-center justify-center">
-          <div className={`w-10 h-8 border-2 rounded flex items-center justify-center transition-all ${jerseyBoxClass}`}>
+          <div className={`w-10 h-8 border-2 rounded-lg flex items-center justify-center transition-all ${jerseyBoxClass}`}>
             <input
               type="text"
               value={player.number}
@@ -127,19 +127,19 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         </div>
       </td>
 
-      <td className={`p-1 sticky left-[56px] z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
+      <td className={`p-1 sticky left-[52px] z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
         <input
           type="text"
           value={player.name}
           onChange={(e) => onIdentityChange(player.id, 'name', e.target.value)}
-          className="w-full px-2 py-1.5 bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white font-heading font-bold text-sm placeholder-gray-200"
+          className="w-full px-2 py-1 bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white font-heading font-black text-sm placeholder-gray-200"
           placeholder="Player Name"
           disabled={isReadOnly}
         />
       </td>
 
       {STAT_CONFIGS.map((config) => (
-        <td key={config.key} className="p-1 min-w-[95px]">
+        <td key={config.key} className="p-1 min-w-[100px]">
           <CompactStatControl
             label={config.label}
             value={player.stats[config.key]}
@@ -155,8 +155,8 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         </td>
       ))}
 
-      <td className="p-1 min-w-[85px] bg-gray-50/20 dark:bg-midnight-900">
-         <div className={`flex items-center justify-center h-10 w-full rounded-lg font-jersey text-2xl shadow-inner ${impactColor}`}>
+      <td className="p-1 min-w-[90px] bg-gray-50/20 dark:bg-midnight-900">
+         <div className={`flex items-center justify-center h-9 w-full rounded-xl font-jersey text-2xl shadow-inner ${impactColor}`}>
             {impactScore}
          </div>
       </td>
