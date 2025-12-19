@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { SquadPlayer } from '../types';
@@ -102,7 +101,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
           </div>
           <button 
              onClick={handleImportLocked}
-             className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg transition-colors border border-blue-100 dark:border-blue-900/30 flex items-center space-x-1"
+             className="text-xs font-bold text-brand hover:text-brand-700 bg-brand/5 dark:bg-brand/10 px-3 py-2 rounded-lg transition-colors border border-brand/20 flex items-center space-x-1"
              title="Import the locked team from the Planner tab"
           >
              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
@@ -130,7 +129,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                      {jersey}
                    </div>
                    <select
-                     className="flex-1 p-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full min-w-0 text-gray-900 dark:text-white"
+                     className="flex-1 p-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded text-sm focus:ring-2 focus:ring-brand outline-none w-full min-w-0 text-gray-900 dark:text-white"
                      value={selectedId}
                      onChange={(e) => handleSelect(jersey, e.target.value)}
                    >
@@ -149,7 +148,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
 
         <div className="p-6 border-t border-gray-200 dark:border-white/10 bg-white dark:bg-[#1A1A1C] flex justify-end space-x-4">
           <Button variant="secondary" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-gray-200">Cancel</Button>
-          <Button onClick={handleSubmit} className="px-8 bg-red-600 hover:bg-red-700">Start Match</Button>
+          <Button onClick={handleSubmit} className="px-8 bg-brand hover:bg-brand-700 shadow-brand">Start Match</Button>
         </div>
       </div>
     </div>

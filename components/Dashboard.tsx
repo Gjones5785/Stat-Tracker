@@ -184,11 +184,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
              {!logoError ? (
                <img src={logoSrc} alt="Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" onError={() => setLogoError(true)}/>
              ) : (
-               <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-500/20">
-                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
+               <div className="w-10 h-10 bg-gradient-to-br from-brand to-brand-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/20">
+                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
                </div>
              )}
-             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">LeagueLens<span className="text-red-600">.</span></span>
+             <h1 className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">LeagueLens<span className="text-brand">.</span></h1>
           </div>
 
           <div className="flex-1 flex flex-col items-center px-2 min-w-0">
@@ -203,7 +203,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-3 shrink-0 justify-end pl-4">
-             {/* Coach's Clipboard Button */}
              <button 
                 onClick={onOpenDrawer}
                 className="relative w-11 h-11 flex items-center justify-center bg-slate-900 text-white rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-slate-800"
@@ -214,14 +213,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </svg>
                 {showBadge && (
                    <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                      <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 border-2 border-white text-[10px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
+                      <span className="relative inline-flex rounded-full h-5 w-5 bg-brand border-2 border-white text-[10px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
                    </span>
                 )}
              </button>
 
              <button 
                onClick={() => setShowGuideModal(true)} 
-               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-white/10 rounded-full transition-all"
+               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-brand hover:bg-brand/5 dark:hover:bg-white/10 rounded-full transition-all"
                title="Help Guide"
              >
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -267,8 +266,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
               <div className="group bg-white dark:bg-[#1A1A1C] rounded-3xl p-8 shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all duration-300 cursor-pointer border border-white dark:border-white/5 hover:scale-[1.01]" onClick={onNewMatch}>
                 <div className="flex items-start justify-between mb-8">
-                   <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-6"><svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></div>
-                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors text-gray-400 dark:text-gray-500"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></div>
+                   <div className="w-14 h-14 bg-brand/5 dark:bg-brand/10 text-brand rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-6"><svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></div>
+                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors text-gray-400 dark:text-gray-500"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></div>
                 </div>
                 <div><h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white mb-2">New Match</h2><p className="text-slate-500 dark:text-gray-400 font-medium">Start a blank session.</p></div>
               </div>
@@ -293,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 text-center">
                          <span className="block text-3xl font-heading font-black text-red-600 dark:text-red-400">{statsSummary.losses}</span>
-                         <span className="text-[10px] font-bold text-red-700/60 dark:text-red-400/60 uppercase tracking-wide">Losses</span>
+                         <span className="text-[10px] font-bold text-red-700/60 dark:text-green-400/60 uppercase tracking-wide">Losses</span>
                       </div>
                       <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/30 text-center">
                          <span className="block text-3xl font-heading font-black text-orange-600 dark:text-orange-400">{statsSummary.draws}</span>
@@ -317,18 +316,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     
                     return (
                       <div key={match.id} className="group bg-white dark:bg-[#1A1A1C] rounded-2xl overflow-hidden shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all flex items-center border border-transparent hover:border-gray-100 dark:hover:border-white/5 h-24">
-                        {/* Vertical Result Color Strip */}
                         <div className={`w-1.5 self-stretch ${match.result === 'win' ? 'bg-green-500' : match.result === 'loss' ? 'bg-red-500' : 'bg-orange-500'}`}></div>
                         
                         <div className="flex-1 px-6 flex items-center justify-between min-w-0 h-full">
                           
-                          {/* META SECTION (LEFT) */}
                           <div className="w-24 shrink-0 hidden sm:flex flex-col justify-center items-start leading-none pr-4 border-r border-gray-100 dark:border-white/5 h-12">
                              <span className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">{formattedDate}</span>
                              <div className={`mt-2 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase inline-block whitespace-nowrap ${match.result === 'win' ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : match.result === 'loss' ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400' : match.result === 'draw' ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>{match.result}</div>
                           </div>
 
-                          {/* VERSUS MATCHUP SECTION (CENTER) */}
                           <div className="flex-1 flex items-center justify-center min-w-0 px-2 sm:px-6 h-full cursor-pointer" onClick={() => onViewMatch(match)}>
                              <div className="flex-1 flex flex-col items-end min-w-0 pr-4">
                                 <h4 className="text-xs sm:text-base font-heading font-black text-slate-900 dark:text-white truncate uppercase tracking-tight w-full text-right leading-none">{match.teamName || 'Team'}</h4>
@@ -336,7 +332,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                              <div className="shrink-0 flex items-center justify-center">
                                 <div className="bg-gray-50 dark:bg-[#090A10] rounded-xl px-4 py-2 border border-gray-200 dark:border-white/10 flex items-center justify-center min-w-[90px] shadow-sm">
-                                   <span className="font-jersey text-2xl sm:text-3xl font-bold tracking-[0.1em] text-blue-600 dark:text-blue-400 leading-none pt-1">{match.finalScore}</span>
+                                   <span className="font-jersey text-2xl sm:text-3xl font-bold tracking-[0.1em] text-brand dark:text-blue-400 leading-none pt-1">{match.finalScore}</span>
                                 </div>
                              </div>
 
@@ -345,7 +341,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                              </div>
                           </div>
 
-                          {/* ANALYTICS SECTION (RIGHT) */}
                           <div className="w-36 lg:w-48 shrink-0 hidden md:flex items-center justify-center gap-6 px-6 border-l border-gray-100 dark:border-white/5 h-12">
                              {potmName && (
                                <div className="flex flex-col items-center leading-none text-center">
@@ -362,9 +357,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                              </div>
                           </div>
 
-                          {/* ACTIONS SECTION (FAR RIGHT) */}
                           <div className="shrink-0 pl-4 border-l border-gray-100 dark:border-white/5 flex items-center space-x-1 sm:space-x-2 h-10">
-                            <Button onClick={() => onViewMatch(match)} className="text-[10px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border-none font-black uppercase tracking-widest shadow-sm">View</Button>
+                            <Button onClick={() => onViewMatch(match)} className="text-[10px] px-4 py-2 rounded-xl bg-brand hover:bg-brand-700 text-white border-none font-black uppercase tracking-widest shadow-sm">View</Button>
                             
                             <button 
                               type="button" 
@@ -411,12 +405,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               )}
             </div>
             
-            {/* Guide at bottom for lower prominence */}
             <div className="mt-20 pt-10 border-t border-gray-200 dark:border-white/5 flex flex-col items-center">
                <span className="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.3em] mb-4">LeagueLens Operations</span>
                <button 
                  onClick={() => setShowGuideModal(true)}
-                 className="flex items-center space-x-2 text-xs font-bold text-gray-400 hover:text-blue-500 transition-colors bg-white dark:bg-white/5 px-4 py-2 rounded-full border border-gray-100 dark:border-white/5"
+                 className="flex items-center space-x-2 text-xs font-bold text-gray-400 hover:text-brand transition-colors bg-white dark:bg-white/5 px-4 py-2 rounded-full border border-gray-100 dark:border-white/5"
                >
                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                  <span>View Help Guide</span>
@@ -457,10 +450,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                  </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="relative"><div className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Step 1</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Build Squad</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Go to the <strong>Squad</strong> tab. Add your players once, and they will be saved forever across all matches.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Step 2</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Plan Team</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>Planner</strong> tab to select availability and map out your starting 13 on the visual field before matchday.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Step 3</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Track Live</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Hit <strong>New Match</strong>. Use the <strong>+</strong> / <strong>-</strong> buttons to track stats. Use the <strong>Impact Play</strong> for big match-defining moments.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Step 4</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Save & Vote</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Click <strong>End Match</strong>. This saves the game to history, updates career totals, and prompts for Player of the Year votes.</p></div>
+                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 1</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Build Squad</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Go to the <strong>Squad</strong> tab. Add your players once, and they will be saved forever across all matches.</p></div>
+                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 2</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Plan Team</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>Planner</strong> tab to select availability and map out your starting 13 on the visual field before matchday.</p></div>
+                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 3</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Track Live</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Hit <strong>New Match</strong>. Use the <strong>+</strong> / <strong>-</strong> buttons to track stats. Use the <strong>Impact Play</strong> for big match-defining moments.</p></div>
+                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 4</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Save & Vote</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Click <strong>End Match</strong>. This saves the game to history, updates career totals, and prompts for Player of the Year votes.</p></div>
               </div>
               <div className="mt-8 pt-8 border-t border-gray-100 dark:border-white/5 flex justify-center">
                  <Button onClick={() => setShowGuideModal(false)} className="px-10 bg-slate-900 dark:bg-white dark:text-slate-900">Got it, Coach</Button>

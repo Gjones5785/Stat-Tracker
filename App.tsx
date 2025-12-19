@@ -311,7 +311,6 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-midnight-950 font-sans transition-colors duration-300 overflow-hidden">
-       {/* COMPACT HEADER TO SAVE SPACE */}
        <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-md z-40 py-2">
           <div className="w-full max-w-[1920px] mx-auto px-6 flex items-center justify-between gap-2">
              <div className="flex items-center gap-3 shrink-0">
@@ -330,7 +329,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
              <div className="flex-1 flex items-center justify-center gap-6 px-2 overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0">
                    <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="bg-transparent text-right font-heading font-black text-sm md:text-lg text-slate-800 dark:text-white w-20 md:w-40 focus:outline-none truncate" />
-                   <input type="number" value={teamScore} onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)} className="text-4xl font-jersey font-black text-blue-600 dark:text-neon-blue w-14 text-center bg-transparent outline-none pt-0.5" />
+                   <input type="number" value={teamScore} onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)} className="text-4xl font-jersey font-black text-brand dark:text-neon-blue w-14 text-center bg-transparent outline-none pt-0.5" />
                 </div>
                 <div className="text-gray-300 font-light text-2xl">-</div>
                 <div className="flex items-center gap-2 min-w-0">
@@ -354,6 +353,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
              </div>
 
              <div className="flex items-center gap-4 shrink-0">
+                <h1 className="font-heading font-black text-[10px] tracking-tight text-slate-900 dark:text-white uppercase">LeagueLens<span className="text-red-600">.</span></h1>
                 <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-95 transition-all">
                    {period === '1st' ? 'End 1st' : 'Finish'}
                 </Button>
@@ -398,7 +398,6 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
           </div>
        </main>
 
-       {/* REFINED COMPACT FOOTER */}
        <div className={`shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-midnight-700 p-2 z-50 shadow-2xl transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
           <div className="max-w-4xl mx-auto flex items-center justify-center space-x-3">
              <button onClick={() => setIsLogOpen(true)} className="flex items-center justify-center w-10 h-10 bg-gray-50 dark:bg-midnight-800 rounded-xl border border-gray-200 dark:border-midnight-600 shadow-sm active:scale-95 transition-all">
@@ -459,7 +458,6 @@ export const App: React.FC = () => {
   const [trainingHistory, setTrainingHistory] = useState<TrainingSession[]>([]);
   const [playbook, setPlaybook] = useState<PlaybookItem[]>([]);
   
-  // Coach Drawer State
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -483,7 +481,7 @@ export const App: React.FC = () => {
         setPlaybook([]); 
         setActions([]); 
         setCoaches([]); 
-        setHasViewedActions(false); // Reset on logout
+        setHasViewedActions(false);
       }
     });
   }, []);
@@ -496,6 +494,18 @@ export const App: React.FC = () => {
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
+
+  useEffect(() => {
+    const brandColor = localStorage.getItem('RUGBY_TRACKER_BRAND_COLOR') || '#E02020';
+    document.documentElement.style.setProperty('--brand-primary', brandColor);
+    
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return '224, 32, 32';
+      return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+    };
+    document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(brandColor));
+  }, []);
 
   useEffect(() => {
     loadActiveMatchState().then(data => { if (data) setHasResumableMatch(true); });
@@ -552,16 +562,13 @@ export const App: React.FC = () => {
   const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
   const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
 
-  // Coach Drawer Handlers
   const handleAddAction = async (content: string, category: ActionCategory) => {
      if (!user) return;
-     
      let matchTimestamp: string | null = null;
      if (activeMatch && typeof activeMatch.matchTime === 'number') {
         const time = activeMatch.matchTime;
         matchTimestamp = `[${Math.floor(time / 60).toString().padStart(2, '0')}:${(time % 60).toString().padStart(2, '0')}]`;
      }
-     
      await addDoc(collection(db, `users/${user.uid}/actions`), {
         content,
         category,

@@ -237,8 +237,7 @@ const DRILL_LIBRARY: Drill[] = [
   }
 ];
 
-// --- HELPER COMPONENTS ---
-
+// --- REF'S CORNER VIEW ---
 const RefCornerView = () => {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -285,13 +284,13 @@ const RefCornerView = () => {
         <div className="md:col-span-2">
            <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-14 flex items-center pointer-events-none">
-                 <svg className="h-6 w-6 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <svg className="h-6 w-6 text-gray-400 group-focus-within:text-brand transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                  </svg>
               </div>
               <input 
                  type="text" 
-                 className="block w-full pl-14 pr-4 py-5 border-none rounded-3xl bg-white dark:bg-[#1A1A1C] text-slate-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 shadow-apple dark:shadow-none transition-all text-lg font-medium" 
+                 className="block w-full pl-14 pr-4 py-5 border-none rounded-3xl bg-white dark:bg-[#1A1A1C] text-slate-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-brand shadow-apple dark:shadow-none transition-all text-lg font-medium" 
                  placeholder="Search rules (e.g. 'High Tackle', 'Scrum')..." 
                  value={search}
                  onChange={(e) => setSearch(e.target.value)}
@@ -306,12 +305,12 @@ const RefCornerView = () => {
                   <div 
                     key={i}
                     onClick={() => setActiveCategory(cat.category)}
-                    className="bg-white dark:bg-[#1A1A1C] p-6 rounded-3xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 cursor-pointer hover:shadow-apple-hover hover:border-blue-200 dark:hover:border-blue-900 transition-all duration-300 group flex flex-col h-full"
+                    className="bg-white dark:bg-[#1A1A1C] p-6 rounded-3xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 cursor-pointer hover:shadow-apple-hover hover:border-brand-200 dark:hover:border-brand-900 transition-all duration-300 group flex flex-col h-full"
                   >
                      <div className={`w-14 h-14 ${cat.color} bg-opacity-10 dark:bg-opacity-20 text-3xl flex items-center justify-center rounded-2xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
                         {cat.icon}
                      </div>
-                     <h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{cat.category}</h3>
+                     <h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2 group-hover:text-brand transition-colors">{cat.category}</h3>
                      <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">{cat.description}</p>
                   </div>
                ))}
@@ -331,7 +330,7 @@ const RefCornerView = () => {
                   </div>
                   <button 
                      onClick={() => { setActiveCategory(null); setSearch(''); }}
-                     className="text-sm font-bold text-gray-500 hover:text-slate-900 dark:hover:text-white flex items-center px-4 py-2 rounded-xl hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                     className="text-sm font-bold text-gray-500 hover:text-brand flex items-center px-4 py-2 rounded-xl hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
                   >
                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                      Back
@@ -341,7 +340,7 @@ const RefCornerView = () => {
                   {displayRules.length > 0 ? (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {displayRules.map((rule, idx) => (
-                           <div key={idx} className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-900 transition-colors group">
+                           <div key={idx} className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-brand-200 dark:hover:border-brand-900 transition-colors group">
                               <div>
                                 <h4 className="font-bold text-slate-900 dark:text-white mb-2">{rule.title}</h4>
                                 <p className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">{rule.content}</p>
@@ -568,7 +567,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id as any); resetWizard(); }}
-              className={`py-4 px-6 text-sm font-bold border-b-[3px] transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+              className={`py-4 px-6 text-sm font-bold border-b-[3px] transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
             >
               {tab.label}
             </button>
@@ -625,7 +624,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
            <div className="lg:col-span-2 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                  {DRILL_LIBRARY.map(drill => (
-                    <div key={drill.id} className="bg-white dark:bg-[#1A1A1C] p-6 rounded-3xl border border-gray-100 dark:border-white/5 hover:border-blue-500 transition-colors flex flex-col justify-between">
+                    <div key={drill.id} className="bg-white dark:bg-[#1A1A1C] p-6 rounded-3xl border border-gray-100 dark:border-white/5 hover:border-brand transition-colors flex flex-col justify-between">
                        <div>
                           <div className="flex justify-between items-start mb-4">
                              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${drill.category === 'Defence' ? 'bg-red-600' : getCategoryColor(drill.category)} text-white`}>{drill.category}</span>
@@ -651,7 +650,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                  </div>
                  <input 
                     type="text" 
-                    className="block w-full pl-14 pr-12 py-3 bg-white dark:bg-[#1A1A1C] border border-gray-100 dark:border-white/5 rounded-2xl text-lg font-medium shadow-apple dark:shadow-none focus:ring-2 focus:ring-red-500 transition-all placeholder-gray-400" 
+                    className="block w-full pl-14 pr-12 py-3 bg-white dark:bg-[#1A1A1C] border border-gray-100 dark:border-white/5 rounded-2xl text-lg font-medium shadow-apple dark:shadow-none focus:ring-2 focus:ring-brand transition-all placeholder-gray-400" 
                     placeholder="Search drills..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -697,7 +696,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                            {drill.difficulty}
                          </span>
                       </div>
-                      <h4 className="font-heading font-bold text-lg text-slate-900 dark:text-white mb-2 group-hover:text-red-600 transition-colors line-clamp-1">{drill.title}</h4>
+                      <h4 className="font-heading font-bold text-lg text-slate-900 dark:text-white mb-2 group-hover:text-brand transition-colors line-clamp-1">{drill.title}</h4>
                       <p className="text-sm text-slate-700 dark:text-gray-300 mb-6 line-clamp-3 leading-relaxed flex-1 font-medium">{drill.description}</p>
                       <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-white/5">
                          <div className="flex items-center space-x-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
@@ -737,7 +736,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                         </div>
                         <Button 
                           onClick={() => setIsCreating(true)} 
-                          className="px-10 py-4 bg-[#E02020] hover:bg-red-700 text-white rounded-2xl shadow-xl hover:scale-105 transition-all text-lg font-black uppercase tracking-widest"
+                          className="px-10 py-4 bg-brand hover:bg-brand-700 text-white rounded-2xl shadow-xl hover:scale-105 transition-all text-lg font-black uppercase tracking-widest"
                         >
                           + Create Your First Play
                         </Button>
@@ -774,7 +773,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                  {/* Mobile FAB */}
                  <button 
                     onClick={() => setIsCreating(true)}
-                    className="fixed bottom-6 right-6 w-16 h-16 bg-[#E02020] text-white rounded-full shadow-2xl flex items-center justify-center text-3xl font-black active:scale-90 transition-all z-[60] sm:hidden"
+                    className="fixed bottom-6 right-6 w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center text-3xl font-black active:scale-90 transition-all z-[60] sm:hidden"
                  >
                     +
                  </button>
@@ -788,7 +787,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                        <h3 className="text-3xl font-heading font-black text-slate-900 dark:text-white">Create New Play</h3>
                        <div className="flex items-center space-x-2 mt-2">
                           {[1, 2, 3].map(step => (
-                             <div key={step} className={`h-1.5 rounded-full transition-all duration-500 ${wizardStep === step ? 'w-10 bg-red-600' : 'w-4 bg-gray-200 dark:bg-white/10'}`}></div>
+                             <div key={step} className={`h-1.5 rounded-full transition-all duration-500 ${wizardStep === step ? 'w-10 bg-brand' : 'w-4 bg-gray-200 dark:bg-white/10'}`}></div>
                           ))}
                        </div>
                     </div>
@@ -805,7 +804,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                             autoFocus
                             value={newPlayTitle}
                             onChange={(e) => setNewPlayTitle(e.target.value)}
-                            className="w-full bg-transparent border-b-2 border-gray-200 dark:border-white/10 focus:border-red-600 outline-none py-4 text-3xl font-heading font-bold text-slate-900 dark:text-white transition-all placeholder-gray-300"
+                            className="w-full bg-transparent border-b-2 border-gray-200 dark:border-white/10 focus:border-brand outline-none py-4 text-3xl font-heading font-bold text-slate-900 dark:text-white transition-all placeholder-gray-300"
                             placeholder="Name your play..."
                           />
                        </div>
@@ -877,7 +876,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                           <div className="space-y-4">
                              {newCoachingPoints.map((point, idx) => (
                                 <div key={idx} className="flex items-center group">
-                                   <div className="w-8 h-8 rounded-full bg-red-600/10 text-red-600 flex items-center justify-center text-sm font-black mr-4 shrink-0">•</div>
+                                   <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/20 text-brand flex items-center justify-center text-sm font-black mr-4 shrink-0">•</div>
                                    <input 
                                      autoFocus={idx === newCoachingPoints.length - 1}
                                      type="text"
@@ -902,7 +901,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                           </div>
                           <button 
                             onClick={() => setNewCoachingPoints([...newCoachingPoints, ''])}
-                            className="mt-6 text-xs font-black text-red-600 hover:text-red-700 uppercase tracking-widest pl-12"
+                            className="mt-6 text-xs font-black text-brand hover:text-brand-700 uppercase tracking-widest pl-12"
                           >
                              + Add Another Point
                           </button>
@@ -922,7 +921,7 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
       {/* Drill Detail Modal Integration Placeholder */}
       {selectedDrill && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedDrill(null)} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedDrill(null)} />
             <div className="relative bg-white dark:bg-[#1A1A1C] rounded-3xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50 dark:bg-white/5 shrink-0">
                   <h2 className="text-2xl font-heading font-black text-slate-900 dark:text-white">{selectedDrill.title}</h2>
@@ -940,15 +939,15 @@ export const LeagueHubView: React.FC<LeagueHubViewProps> = ({
                   </div>
                   <div className="w-full lg:w-[400px] overflow-y-auto bg-white dark:bg-[#1A1A1C] border-l border-gray-100 dark:border-white/5 p-8 flex flex-col shrink-0">
                        <div className="space-y-8">
-                          <div className={`p-6 rounded-3xl border border-blue-100 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/10`}>
-                             <h3 className="font-black text-blue-800 dark:text-blue-300 mb-4 text-sm uppercase tracking-widest flex items-center">
+                          <div className={`p-6 rounded-3xl border border-brand-100 dark:border-brand-900/30 bg-brand-50 dark:bg-brand-900/10`}>
+                             <h3 className="font-black text-brand dark:text-brand-300 mb-4 text-sm uppercase tracking-widest flex items-center">
                                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 Coaching Points
                              </h3>
                              <ul className="space-y-3">
                                 {selectedDrill.coachingPoints.map((pt, i) => (
-                                   <li key={i} className="flex items-start text-sm text-blue-900 dark:text-blue-100 font-bold">
-                                      <span className="mr-2 text-blue-500">•</span>{pt}
+                                   <li key={i} className="flex items-start text-sm text-brand-900 dark:text-brand-100 font-bold">
+                                      <span className="mr-2 text-brand">•</span>{pt}
                                    </li>
                                 ))}
                              </ul>

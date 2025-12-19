@@ -31,15 +31,88 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     if (savedClubName) setClubName(savedClubName);
   }, []);
 
+  const getDominantColor = (imgBase64: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1;
+        canvas.height = 1;
+        ctx?.drawImage(img, 0, 0, 1, 1);
+        const data = ctx?.getImageData(0, 0, 1, 1).data || [224, 32, 32];
+        const r = data[0];
+        const g = data[1];
+        const b = data[2];
+        const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        resolve(hex);
+      };
+      img.src = imgBase64;
+    });
+  };
+
+  const resizeImage = (base64Str: string, maxWidth = 256, maxHeight = 256): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/png', 0.7)); // Moderate compression
+      };
+      img.src = base64Str;
+    });
+  };
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setCustomLogo(result);
-        localStorage.setItem('RUGBY_TRACKER_LOGO', result);
-        setDefaultLogoFailed(false);
+      reader.onloadend = async () => {
+        try {
+          const rawResult = reader.result as string;
+          
+          // Resize image to prevent localStorage quota issues
+          const resizedLogo = await resizeImage(rawResult);
+          
+          setCustomLogo(resizedLogo);
+          localStorage.setItem('RUGBY_TRACKER_LOGO', resizedLogo);
+          
+          // Extract and save dominant brand color
+          const color = await getDominantColor(resizedLogo);
+          localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', color);
+          
+          // Apply color immediately to UI
+          document.documentElement.style.setProperty('--brand-primary', color);
+          const hexToRgb = (hex: string) => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            if (!result) return '224, 32, 32';
+            return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+          };
+          document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(color));
+          
+          setDefaultLogoFailed(false);
+          setError('');
+        } catch (err) {
+          console.error("Logo processing error:", err);
+          setError('Failed to process logo. Please try a smaller image.');
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -79,7 +152,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           await setDoc(doc(db, 'users', userCredential.user.uid), {
              username: username,
              clubName: clubName,
-             logo: customLogo
+             logo: customLogo,
+             brandColor: localStorage.getItem('RUGBY_TRACKER_BRAND_COLOR') || '#E02020'
           }, { merge: true });
         }
       }
@@ -91,6 +165,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       else if (err.code === 'auth/email-already-in-use') msg = 'Email already registered. Try signing in.';
       else if (err.code === 'auth/weak-password') msg = 'Password should be at least 6 characters.';
       else if (err.code === 'auth/invalid-email') msg = 'Invalid email address format.';
+      else if (err.code === 'auth/operation-not-allowed') msg = 'Email/Password login is not enabled in Firebase Console.';
       else if (err.code === 'auth/too-many-requests') msg = 'Too many failed attempts. Please try again later.';
       setError(msg);
     } finally {
@@ -139,8 +214,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
              </div>
           </div>
           <div className="mb-12">
-            <h1 className="text-6xl lg:text-7xl font-heading font-bold tracking-tighter text-white mb-6 leading-none">
-              LeagueLens<span className="text-red-600">.</span>
+            <h1 className="text-5xl lg:text-6xl font-heading font-bold tracking-tighter text-white mb-6 leading-tight">
+              LeagueLens<span className="text-brand">.</span>
             </h1>
             <p className="text-lg text-white/40 font-light max-w-sm leading-relaxed">
               Empowering the game at every level. Professional-grade analysis for grassroots teams, from juniors to open age.
@@ -176,7 +251,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                   <div className="flex justify-between items-center mb-2.5 ml-1">
                     <label htmlFor="password" className="block text-xs font-heading font-bold uppercase tracking-widest text-slate-400">Password</label>
                     {authMode === 'signin' && (
-                      <button type="button" onClick={() => { setAuthMode('reset'); setError(''); setSuccessMessage(''); }} className="text-xs font-bold text-red-600 hover:text-red-700 transition-colors">Forgot Password?</button>
+                      <button type="button" onClick={() => { setAuthMode('reset'); setError(''); setSuccessMessage(''); }} className="text-xs font-bold text-brand hover:text-brand-700 transition-colors">Forgot Password?</button>
                     )}
                   </div>
                   <input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="block w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium placeholder-gray-300 shadow-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all" placeholder="••••••••"/>
@@ -193,16 +268,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                 <span className="text-sm text-green-700 font-medium">{successMessage}</span>
               </div>
             )}
-            <Button type="submit" disabled={loading} className="w-full py-4 bg-[#E02020] hover:bg-red-700 text-white font-heading font-bold rounded-2xl shadow-[0_10px_30px_rgba(224,32,32,0.2)] hover:shadow-[0_15px_35px_rgba(224,32,32,0.3)] transition-all transform active:scale-[0.99] text-lg tracking-wide mt-4 disabled:opacity-70">
+            <button type="submit" disabled={loading} className="w-full py-4 bg-brand hover:bg-brand-700 text-white font-heading font-bold rounded-2xl shadow-brand hover:shadow-brand transition-all transform active:scale-[0.99] text-lg tracking-wide mt-4 disabled:opacity-70">
               {loading ? 'Processing...' : buttonText}
-            </Button>
+            </button>
           </form>
           <div className="mt-10 text-center">
             {authMode === 'signin' && (
-              <p className="text-sm text-slate-400 font-medium">New to the platform? <button type="button" onClick={() => { setAuthMode('signup'); setError(''); setSuccessMessage(''); }} className="ml-2 font-bold text-slate-900 hover:text-red-600 transition-colors">Create profile</button></p>
+              <p className="text-sm text-slate-400 font-medium">New to the platform? <button type="button" onClick={() => { setAuthMode('signup'); setError(''); setSuccessMessage(''); }} className="ml-2 font-bold text-slate-900 hover:text-brand-600 transition-colors">Create profile</button></p>
             )}
             {authMode === 'signup' && (
-              <p className="text-sm text-slate-400 font-medium">Already have an account? <button type="button" onClick={() => { setAuthMode('signin'); setError(''); setSuccessMessage(''); }} className="ml-2 font-bold text-slate-900 hover:text-red-600 transition-colors">Sign in</button></p>
+              <p className="text-sm text-slate-400 font-medium">Already have an account? <button type="button" onClick={() => { setAuthMode('signin'); setError(''); setSuccessMessage(''); }} className="ml-2 font-bold text-slate-900 hover:text-brand-600 transition-colors">Sign in</button></p>
             )}
             {authMode === 'reset' && (
               <button type="button" onClick={() => { setAuthMode('signin'); setError(''); setSuccessMessage(''); }} className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">← Back to Sign In</button>
