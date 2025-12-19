@@ -19,7 +19,8 @@ import { CardAssignmentModal } from './components/CardAssignmentModal';
 import { NotificationModal } from './components/NotificationModal';
 import { VotingModal } from './components/VotingModal';
 import { CoachDrawer } from './components/CoachDrawer';
-import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS } from './constants';
+import { SettingsModal } from './components/SettingsModal';
+import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS, IMPACT_WEIGHTS } from './constants';
 
 // --- INTERNAL MATCH TRACKER COMPONENT ---
 
@@ -32,6 +33,7 @@ interface MatchTrackerProps {
   onOpenDrawer: () => void;
   showBadge: boolean;
   pendingActionsCount: number;
+  onOpenSettings: () => void;
 }
 
 const MatchTracker: React.FC<MatchTrackerProps> = ({ 
@@ -42,7 +44,8 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
   onExit,
   onOpenDrawer,
   showBadge,
-  pendingActionsCount
+  pendingActionsCount,
+  onOpenSettings
 }) => {
   const [players, setPlayers] = useState<Player[]>(initialState?.players || createInitialPlayers());
   const [gameLog, setGameLog] = useState<GameLogEntry[]>(initialState?.gameLog || []);
@@ -181,8 +184,8 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
          return p;
        }));
        let type: GameLogEntry['type'] = 'other';
-       if (pendingStat.key === 'penaltiesConceded') type = 'penalty';
-       if (pendingStat.key === 'errors') type = 'error';
+       if (pendingStat.key === 'penalty') type = 'penalty';
+       if (pendingStat.key === 'error') type = 'error';
        addLogEntry(pendingStat.playerId, type, reason, undefined, undefined, { x, y });
        setPendingStat(null);
        setLocModal({ isOpen: false });
@@ -353,6 +356,16 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
              </div>
 
              <div className="flex items-center gap-4 shrink-0">
+                <button 
+                   onClick={onOpenSettings} 
+                   className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-all"
+                   title="Match Settings"
+                >
+                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                   </svg>
+                </button>
                 <h1 className="font-heading font-black text-[10px] tracking-tight text-slate-900 dark:text-white uppercase">LeagueLens<span className="text-red-600">.</span></h1>
                 <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-95 transition-all">
                    {period === '1st' ? 'End 1st' : 'Finish'}
@@ -461,13 +474,30 @@ export const App: React.FC = () => {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasViewedActions, setHasViewedActions] = useState(false);
 
   const [activeMatch, setActiveMatch] = useState<any>(null);
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
   const [hasResumableMatch, setHasResumableMatch] = useState(false);
   const [editingVoteMatch, setEditingVoteMatch] = useState<MatchHistoryItem | null>(null);
+
+  // App Settings State
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('LEAGUELENS_SETTINGS');
+    if (saved) return JSON.parse(saved);
+    return {
+       clubName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || '',
+       logo: localStorage.getItem('RUGBY_TRACKER_LOGO') || null,
+       primaryColor: localStorage.getItem('RUGBY_TRACKER_BRAND_COLOR') || '#E02020',
+       defaultHalfDuration: 40,
+       sinBinDuration: 10,
+       interchangeLimit: 'Limited',
+       hapticFeedback: true,
+       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+       weights: { ...IMPACT_WEIGHTS }
+    };
+  });
 
   const activeSquad = useMemo(() => squad.filter(p => p.active !== false), [squad]);
 
@@ -486,26 +516,23 @@ export const App: React.FC = () => {
     });
   }, []);
 
+  // Sync Global Styles with Settings
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
-  }, []);
-
-  useEffect(() => {
-    if (darkMode) document.documentElement.classList.add('dark');
+    if (settings.darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-  }, [darkMode]);
 
-  useEffect(() => {
-    const brandColor = localStorage.getItem('RUGBY_TRACKER_BRAND_COLOR') || '#E02020';
-    document.documentElement.style.setProperty('--brand-primary', brandColor);
-    
+    document.documentElement.style.setProperty('--brand-primary', settings.primaryColor);
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      if (!result) return '224, 32, 32';
-      return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '224, 32, 32';
     };
-    document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(brandColor));
-  }, []);
+    document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(settings.primaryColor));
+    
+    localStorage.setItem('LEAGUELENS_SETTINGS', JSON.stringify(settings));
+    localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', settings.clubName);
+    localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', settings.primaryColor);
+    if (settings.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', settings.logo);
+  }, [settings]);
 
   useEffect(() => {
     loadActiveMatchState().then(data => { if (data) setHasResumableMatch(true); });
@@ -634,6 +661,7 @@ export const App: React.FC = () => {
         onOpenDrawer={handleOpenDrawer}
         showBadge={showNotificationBadge}
         pendingActionsCount={pendingActionsCount}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       <CoachDrawer 
         isOpen={isDrawerOpen} 
@@ -646,6 +674,13 @@ export const App: React.FC = () => {
         onCycleCoach={handleCycleCoach}
         onAddCoach={handleAddCoach}
         onDeleteCoach={handleDeleteCoach}
+      />
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={setSettings}
+        coachInfo={{ name: user.displayName || 'Coach', email: user.email || '' }}
       />
     </>
   );
@@ -687,8 +722,11 @@ export const App: React.FC = () => {
         onAddSquadPlayer={handleAddSquadPlayer}
         onRemoveSquadPlayer={handleRemoveSquadPlayer}
         onUpdateSquadPlayer={handleUpdateSquadPlayer}
-        darkMode={darkMode}
-        toggleTheme={() => setDarkMode(!darkMode)}
+        onOpenDrawer={handleOpenDrawer}
+        showBadge={showNotificationBadge}
+        pendingActionsCount={pendingActionsCount}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        /* Correctly passing the missing training and playbook props to Dashboard */
         trainingHistory={trainingHistory}
         onSaveTrainingSession={handleSaveTraining}
         onUpdateTrainingSession={handleUpdateTraining}
@@ -696,9 +734,6 @@ export const App: React.FC = () => {
         playbook={playbook}
         onAddPlaybookItem={handleAddPlaybookItem}
         onDeletePlaybookItem={handleDeletePlaybookItem}
-        onOpenDrawer={handleOpenDrawer}
-        showBadge={showNotificationBadge}
-        pendingActionsCount={pendingActionsCount}
       />
       {editingVoteMatch && (
         <VotingModal 
@@ -725,6 +760,13 @@ export const App: React.FC = () => {
         onCycleCoach={handleCycleCoach}
         onAddCoach={handleAddCoach}
         onDeleteCoach={handleDeleteCoach}
+      />
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={setSettings}
+        coachInfo={{ name: user.displayName || 'Coach', email: user.email || '' }}
       />
     </>
   );

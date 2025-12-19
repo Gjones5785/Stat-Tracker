@@ -74,18 +74,17 @@ interface DashboardProps {
   onAddSquadPlayer: (player: Omit<SquadPlayer, 'id' | 'createdAt'>) => void;
   onRemoveSquadPlayer: (id: string) => void;
   onUpdateSquadPlayer: (id: string, updates: Partial<SquadPlayer>) => void;
-  darkMode: boolean;
-  toggleTheme: () => void;
-  trainingHistory?: TrainingSession[];
-  onSaveTrainingSession?: (session: Omit<TrainingSession, 'id'>) => void;
-  onUpdateTrainingSession?: (id: string, updates: Partial<TrainingSession>) => void;
-  onDeleteTrainingSession?: (id: string) => void;
-  playbook?: PlaybookItem[];
-  onAddPlaybookItem?: (item: Omit<PlaybookItem, 'id'>) => void;
-  onDeletePlaybookItem?: (id: string) => void;
   onOpenDrawer: () => void;
   showBadge: boolean;
   pendingActionsCount: number;
+  onOpenSettings: () => void;
+  trainingHistory: TrainingSession[];
+  onSaveTrainingSession: (session: Omit<TrainingSession, 'id'>) => void;
+  onUpdateTrainingSession: (id: string, updates: Partial<TrainingSession>) => void;
+  onDeleteTrainingSession: (id: string) => void;
+  playbook: PlaybookItem[];
+  onAddPlaybookItem: (item: Omit<PlaybookItem, 'id'>) => void;
+  onDeletePlaybookItem: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -103,18 +102,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onAddSquadPlayer,
   onRemoveSquadPlayer,
   onUpdateSquadPlayer,
-  darkMode,
-  toggleTheme,
-  trainingHistory = [],
-  onSaveTrainingSession = () => {},
-  onUpdateTrainingSession = () => {},
-  onDeleteTrainingSession = () => {},
-  playbook = [],
-  onAddPlaybookItem = () => {},
-  onDeletePlaybookItem = () => {},
   onOpenDrawer,
   showBadge,
-  pendingActionsCount
+  pendingActionsCount,
+  onOpenSettings,
+  trainingHistory,
+  onSaveTrainingSession,
+  onUpdateTrainingSession,
+  onDeleteTrainingSession,
+  playbook,
+  onAddPlaybookItem,
+  onDeletePlaybookItem
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   const [openMenuMatchId, setOpenMenuMatchId] = useState<string | null>(null);
@@ -132,7 +130,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     window.scrollTo(0, 0);
   }, [currentTab]);
 
-  const [showGuideModal, setShowGuideModal] = useState(false);
   const [logoSrc, setLogoSrc] = useState('logo.png');
   const [logoError, setLogoError] = useState(false);
   const [clubName, setClubName] = useState('');
@@ -145,12 +142,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const savedName = localStorage.getItem('RUGBY_TRACKER_CLUB_NAME');
     if (savedName) setClubName(savedName);
   }, []);
-
-  const handleClubNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setClubName(val);
-    localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', val);
-  };
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -192,13 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="flex-1 flex flex-col items-center px-2 min-w-0">
-            <input 
-              type="text" 
-              value={clubName} 
-              onChange={handleClubNameChange} 
-              placeholder="ENTER TEAM NAME" 
-              className="bg-transparent text-center font-heading font-bold text-xl text-slate-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-200 dark:focus:placeholder-gray-700 uppercase tracking-wider w-full max-w-[300px] truncate"
-            />
+            <h2 className="text-center font-heading font-bold text-xl text-slate-900 dark:text-white uppercase tracking-wider w-full max-w-[300px] truncate">{clubName || 'ENTER TEAM NAME'}</h2>
             <span className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-0.5">Coach: {currentUser}</span>
           </div>
 
@@ -219,24 +204,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
              </button>
 
              <button 
-               onClick={() => setShowGuideModal(true)} 
-               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-brand hover:bg-brand/5 dark:hover:bg-white/10 rounded-full transition-all"
-               title="Help Guide"
+               onClick={onOpenSettings} 
+               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all"
+               title="App Settings"
              >
-               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+               </svg>
              </button>
              
              <div className="h-6 w-px bg-gray-200 dark:bg-white/10 hidden sm:block mx-1"></div>
-             <button onClick={onLogout} className="text-xs font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors bg-red-50 dark:bg-white/10 dark:text-red-400 w-11 h-11 sm:w-auto sm:px-4 sm:py-2 rounded-full flex items-center justify-center">
+             <button onClick={onLogout} className="text-xs font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors bg-red-50 dark:bg-red-900/20 dark:text-red-400 w-11 h-11 sm:w-auto sm:px-4 sm:py-2 rounded-full flex items-center justify-center">
                <span className="hidden sm:inline">Log Out</span>
                <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-             </button>
-             <button onClick={toggleTheme} className="w-11 h-11 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all">
-               {darkMode ? (
-                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-               ) : (
-                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-               )}
              </button>
           </div>
         </div>
@@ -408,11 +389,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="mt-20 pt-10 border-t border-gray-200 dark:border-white/5 flex flex-col items-center">
                <span className="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.3em] mb-4">LeagueLens Operations</span>
                <button 
-                 onClick={() => setShowGuideModal(true)}
+                 onClick={onOpenSettings}
                  className="flex items-center space-x-2 text-xs font-bold text-gray-400 hover:text-brand transition-colors bg-white dark:bg-white/5 px-4 py-2 rounded-full border border-gray-100 dark:border-white/5"
                >
-                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                 <span>View Help Guide</span>
+                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                 </svg>
+                 <span>App Settings & User Guide</span>
                </button>
             </div>
           </div>
@@ -437,30 +421,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
 
       </main>
-
-      {/* Guide Modal */}
-      {showGuideModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowGuideModal(false)} />
-           <div className="relative bg-white dark:bg-[#1A1A1C] rounded-3xl shadow-2xl max-w-2xl w-full p-8 animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
-              <div className="flex justify-between items-center mb-8">
-                 <h2 className="text-2xl font-heading font-black text-slate-900 dark:text-white uppercase tracking-tight">How to use LeagueLens</h2>
-                 <button onClick={() => setShowGuideModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                 </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 1</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Build Squad</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Go to the <strong>Squad</strong> tab. Add your players once, and they will be saved forever across all matches.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 2</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Plan Team</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>Planner</strong> tab to select availability and map out your starting 13 on the visual field before matchday.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 3</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Track Live</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Hit <strong>New Match</strong>. Use the <strong>+</strong> / <strong>-</strong> buttons to track stats. Use the <strong>Impact Play</strong> for big match-defining moments.</p></div>
-                <div className="relative"><div className="text-xs font-bold text-brand uppercase tracking-widest mb-3">Step 4</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Save & Vote</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Click <strong>End Match</strong>. This saves the game to history, updates career totals, and prompts for Player of the Year votes.</p></div>
-              </div>
-              <div className="mt-8 pt-8 border-t border-gray-100 dark:border-white/5 flex justify-center">
-                 <Button onClick={() => setShowGuideModal(false)} className="px-10 bg-slate-900 dark:bg-white dark:text-slate-900">Got it, Coach</Button>
-              </div>
-           </div>
-        </div>
-      )}
 
       <ConfirmationModal isOpen={isDeleteModalOpen} title="Delete Match Record?" message="Permanently remove match and stats? This cannot be undone." onConfirm={confirmDelete} onCancel={() => { setDeleteMatchId(null); setIsDeleteModalOpen(false); }} />
     </div>
