@@ -23,7 +23,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS, IMPACT_WEIGHTS } from './constants';
 
 // --- HELPERS ---
-// Firestore does not support 'undefined'. This utility strips undefined fields.
 const stripUndefined = (obj: any): any => {
   return JSON.parse(JSON.stringify(obj));
 };
@@ -478,10 +477,13 @@ export const App: React.FC = () => {
   const [hasResumableMatch, setHasResumableMatch] = useState(false);
   const [editingVoteMatch, setEditingVoteMatch] = useState<MatchHistoryItem | null>(null);
 
-  // App Settings State
   const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem('LEAGUELENS_SETTINGS');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('LEAGUELENS_SETTINGS');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved settings", e);
+    }
     return {
        clubName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || '',
        logo: localStorage.getItem('RUGBY_TRACKER_LOGO') || null,
@@ -512,22 +514,25 @@ export const App: React.FC = () => {
     });
   }, []);
 
-  // Sync Global Styles with Settings
   useEffect(() => {
-    if (settings.darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    try {
+      if (settings.darkMode) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
 
-    document.documentElement.style.setProperty('--brand-primary', settings.primaryColor);
-    const hexToRgb = (hex: string) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '224, 32, 32';
-    };
-    document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(settings.primaryColor));
-    
-    localStorage.setItem('LEAGUELENS_SETTINGS', JSON.stringify(settings));
-    localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', settings.clubName);
-    localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', settings.primaryColor);
-    if (settings.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', settings.logo);
+      document.documentElement.style.setProperty('--brand-primary', settings.primaryColor);
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '224, 32, 32';
+      };
+      document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(settings.primaryColor));
+      
+      localStorage.setItem('LEAGUELENS_SETTINGS', JSON.stringify(settings));
+      localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', settings.clubName);
+      localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', settings.primaryColor);
+      if (settings.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', settings.logo);
+    } catch (err) {
+      console.error("Failed to sync settings to storage:", err);
+    }
   }, [settings]);
 
   useEffect(() => {
@@ -568,7 +573,6 @@ export const App: React.FC = () => {
   const handleFinishMatch = async (matchData: any) => {
     if (!user) return;
     try {
-      // Stripping 'undefined' values before sending to Firestore
       const cleanedData = stripUndefined(matchData);
       await addDoc(collection(db, `users/${user.uid}/matches`), cleanedData);
       await clearActiveMatchState();
@@ -765,6 +769,7 @@ export const App: React.FC = () => {
         onDeletePlaybookItem={handleDeletePlaybookItem}
         clubName={stripUndefined(settings.clubName)}
         onUpdateClubName={updateClubName}
+        logo={settings.logo}
       />
       {editingVoteMatch && (
         <VotingModal 

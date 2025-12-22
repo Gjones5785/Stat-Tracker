@@ -10,6 +10,37 @@ interface SettingsModalProps {
   coachInfo: { name: string; email: string };
 }
 
+// Helper to resize and compress image to prevent localStorage quota issues
+const resizeImage = (base64Str: string, maxWidth = 256, maxHeight = 256): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      // Using 0.7 quality for good balance
+      resolve(canvas.toDataURL('image/png', 0.7));
+    };
+    img.src = base64Str;
+  });
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -25,7 +56,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleUpdate = (key: string, value: any) => {
     setLocalSettings({ ...localSettings, [key]: value });
     
-    // IMMEDIATE FEEDBACK: If toggling dark mode, apply class to root right now
     if (key === 'darkMode') {
       if (value) document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
@@ -37,6 +67,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ...localSettings,
       weights: { ...localSettings.weights, [key]: value }
     });
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const resized = await resizeImage(reader.result as string);
+          handleUpdate('logo', resized);
+        } catch (err) {
+          console.error("Failed to process logo image", err);
+          alert("Could not process image. Try a different file.");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const saveAndClose = () => {
@@ -60,7 +107,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
       <div className="relative bg-white dark:bg-[#1A1A1C] rounded-[2rem] shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-white/10">
         
-        {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
           <div className="flex items-center space-x-3">
              <div className="w-10 h-10 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-gray-400">
@@ -85,7 +131,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar max-h-[60vh]">
           
           {activeTab === 'branding' && (
@@ -120,16 +165,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <input 
                     type="file" 
                     accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => handleUpdate('logo', reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
+                    onChange={handleLogoUpload}
                     className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-slate-900 file:text-white hover:file:bg-slate-800"
                   />
+                  {localSettings.logo && (
+                    <div className="mt-4 flex items-center space-x-4">
+                       <div className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-1 overflow-hidden">
+                         <img src={localSettings.logo} alt="Preview" className="max-w-full max-h-full object-contain" />
+                       </div>
+                       <button 
+                         onClick={() => handleUpdate('logo', null)}
+                         className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase"
+                       >
+                         Remove Logo
+                       </button>
+                    </div>
+                  )}
                </div>
             </div>
           )}
@@ -295,7 +346,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-midnight-800 flex justify-end space-x-3">
            <Button variant="secondary" onClick={onClose} className="rounded-xl px-6 border-none bg-transparent text-gray-400">Discard</Button>
            <Button onClick={saveAndClose} className="bg-slate-900 dark:bg-white dark:text-slate-900 px-10 rounded-xl shadow-xl active:scale-95 transition-all uppercase tracking-widest font-black text-xs">Save Changes</Button>

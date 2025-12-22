@@ -129,13 +129,13 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                      {jersey}
                    </div>
                    <select
-                     className="flex-1 p-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded text-sm focus:ring-2 focus:ring-brand outline-none w-full min-w-0 text-gray-900 dark:text-white"
+                     className="flex-1 p-2 bg-white dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 rounded text-sm focus:ring-2 focus:ring-brand outline-none w-full min-w-0 text-gray-900 dark:text-white"
                      value={selectedId}
                      onChange={(e) => handleSelect(jersey, e.target.value)}
                    >
-                     <option value="">-- Select Player --</option>
+                     <option value="" className="bg-white dark:bg-midnight-800 text-gray-900 dark:text-white">-- Select Player --</option>
                      {availablePlayers.map(p => (
-                       <option key={p.id} value={p.id}>
+                       <option key={p.id} value={p.id} className="bg-white dark:bg-midnight-800 text-gray-900 dark:text-white">
                          {p.name}
                        </option>
                      ))}
