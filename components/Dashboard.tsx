@@ -81,12 +81,14 @@ interface DashboardProps {
   trainingHistory: TrainingSession[];
   onSaveTrainingSession: (session: Omit<TrainingSession, 'id'>) => void;
   onUpdateTrainingSession: (id: string, updates: Partial<TrainingSession>) => void;
+  /* Fixed Error: removed duplicate onUpdateSquadPlayer from DashboardProps */
   onDeleteTrainingSession: (id: string) => void;
   playbook: PlaybookItem[];
   onAddPlaybookItem: (item: Omit<PlaybookItem, 'id'>) => void;
   onDeletePlaybookItem: (id: string) => void;
   clubName: string;
   onUpdateClubName: (name: string) => void;
+  logo: string | null;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -111,12 +113,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   trainingHistory,
   onSaveTrainingSession,
   onUpdateTrainingSession,
+  /* Fixed Error: removed duplicate onUpdateSquadPlayer from Dashboard destructuring */
   onDeleteTrainingSession,
   playbook,
   onAddPlaybookItem,
   onDeletePlaybookItem,
   clubName,
-  onUpdateClubName
+  onUpdateClubName,
+  logo
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   const [openMenuMatchId, setOpenMenuMatchId] = useState<string | null>(null);
@@ -134,15 +138,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     window.scrollTo(0, 0);
   }, [currentTab]);
 
-  const [logoSrc, setLogoSrc] = useState('logo.png');
-  const [logoError, setLogoError] = useState(false);
   const [deleteMatchId, setDeleteMatchId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('RUGBY_TRACKER_LOGO');
-    if (saved) { setLogoSrc(saved); setLogoError(false); }
-  }, []);
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -173,14 +170,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <header className="bg-white/80 dark:bg-[#1A1A1C]/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200/50 dark:border-white/5 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#1A1A1C]/60">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-3 shrink-0 pr-4">
-             {!logoError ? (
-               <img src={logoSrc} alt="Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" onError={() => setLogoError(true)}/>
+             {logo ? (
+               <img src={logo} alt="Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" />
              ) : (
                <div className="w-10 h-10 bg-gradient-to-br from-brand to-brand-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/20">
                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
                </div>
              )}
-             <h1 className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">Simple Player Stat Tracker<span className="text-brand">.</span></h1>
+             <h1 className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">LeagueLens<span className="text-brand">.</span></h1>
           </div>
 
           <div className="flex-1 flex flex-col items-center px-2 min-w-0">

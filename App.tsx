@@ -361,8 +361,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
              </div>
 
              <div className="flex items-center gap-4 shrink-0">
-                <h1 className="font-heading font-black text-[10px] tracking-tight text-slate-900 dark:text-white uppercase">Simple Player Stat Tracker<span className="text-red-600">.</span></h1>
-                <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-95 transition-all">
+                <Button onClick={handlePeriodEnd} className="px-4 py-2 h-auto text-[11px] font-black uppercase tracking-widest bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-lg whitespace-nowrap active:scale-[0.98] transition-all">
                    {period === '1st' ? 'End 1st' : 'Finish'}
                 </Button>
              </div>
