@@ -180,7 +180,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
                </div>
              )}
-             <h1 className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">LeagueLens<span className="text-brand">.</span></h1>
+             <h1 className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden md:inline">Simple Player Stat Tracker<span className="text-brand">.</span></h1>
           </div>
 
           <div className="flex-1 flex flex-col items-center px-2 min-w-0">
@@ -394,7 +394,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             
             <div className="mt-20 pt-10 border-t border-gray-200 dark:border-white/5 flex flex-col items-center">
-               <span className="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.3em] mb-4">LeagueLens Operations</span>
+               <span className="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.3em] mb-4">Stat Tracker Operations</span>
                <button 
                  onClick={onOpenSettings}
                  className="flex items-center space-x-2 text-xs font-bold text-gray-400 hover:text-brand transition-colors bg-white dark:bg-white/5 px-4 py-2 rounded-full border border-gray-100 dark:border-white/5"
