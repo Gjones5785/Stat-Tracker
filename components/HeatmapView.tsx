@@ -21,9 +21,9 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
 
   const getDotStyle = (type: string) => {
     switch (type) {
-      case 'try': return 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] border-blue-200';
-      case 'penalty': return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] border-red-200';
-      case 'error': return 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] border-orange-200';
+      case 'try': return 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] border-blue-100';
+      case 'penalty': return 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-red-100';
+      case 'error': return 'bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.9)] border-orange-100';
       default: return 'bg-gray-400';
     }
   };
@@ -140,16 +140,47 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
          {filteredEvents.map(event => {
             const isSelected = selectedEventId === event.id;
             const zIndex = isSelected ? 'z-30' : 'z-10';
+            const x = event.coordinate!.x;
+            const y = event.coordinate!.y;
             
+            // Intelligent positioning logic to prevent overflow
+            const isNearTop = y < 35;
+            const isNearLeft = x < 25;
+            const isNearRight = x > 75;
+
+            let tooltipClasses = "absolute w-max max-w-[160px] bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-xl shadow-2xl border border-white/10 transform transition-all duration-200 origin-center pointer-events-none";
+            let arrowClasses = "absolute border-[6px] border-transparent";
+
+            // Vertical position
+            if (isNearTop) {
+              tooltipClasses += " top-full mt-4";
+              arrowClasses += " bottom-full border-b-slate-900/95";
+            } else {
+              tooltipClasses += " bottom-full mb-4";
+              arrowClasses += " top-full border-t-slate-900/95";
+            }
+
+            // Horizontal position
+            if (isNearLeft) {
+              tooltipClasses += " left-0 translate-x-0";
+              arrowClasses += " left-4";
+            } else if (isNearRight) {
+              tooltipClasses += " right-0 translate-x-0";
+              arrowClasses += " right-4";
+            } else {
+              tooltipClasses += " left-1/2 -translate-x-1/2";
+              arrowClasses += " left-1/2 -translate-x-1/2";
+            }
+
             return (
               <div 
                  key={event.id}
                  onClick={(e) => { e.stopPropagation(); setSelectedEventId(isSelected ? null : event.id); }}
-                 className={`absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full border border-white group cursor-pointer ${zIndex} ${getDotStyle(event.type)} transition-all duration-200 ${isSelected ? 'scale-150 ring-2 ring-white shadow-xl' : 'hover:scale-125'}`}
-                 style={{ left: `${event.coordinate!.x}%`, top: `${event.coordinate!.y}%` }}
+                 className={`absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full border-2 border-white group cursor-pointer ${zIndex} ${getDotStyle(event.type)} transition-all duration-200 ${isSelected ? 'scale-125 ring-4 ring-white shadow-2xl' : 'hover:scale-110'}`}
+                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                  <div 
-                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max max-w-[160px] bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-xl shadow-2xl border border-white/10 transform transition-all duration-200 origin-bottom pointer-events-none ${
+                    className={`${tooltipClasses} ${
                       isSelected 
                         ? 'opacity-100 scale-100 visible translate-y-0' 
                         : 'opacity-0 scale-90 invisible translate-y-2'
@@ -170,7 +201,7 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ gameLog }) => {
                           "{event.reason}"
                        </div>
                     )}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-slate-900/95"></div>
+                    <div className={arrowClasses}></div>
                  </div>
               </div>
             );

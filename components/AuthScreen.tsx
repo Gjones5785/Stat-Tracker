@@ -74,7 +74,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/png', 0.7)); // Moderate compression
+        resolve(canvas.toDataURL('image/png', 0.7));
       };
       img.src = base64Str;
     });
@@ -87,18 +87,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       reader.onloadend = async () => {
         try {
           const rawResult = reader.result as string;
-          
-          // Resize image to prevent localStorage quota issues
           const resizedLogo = await resizeImage(rawResult);
-          
           setCustomLogo(resizedLogo);
           localStorage.setItem('RUGBY_TRACKER_LOGO', resizedLogo);
-          
-          // Extract and save dominant brand color
           const color = await getDominantColor(resizedLogo);
           localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', color);
-          
-          // Apply color immediately to UI
           document.documentElement.style.setProperty('--brand-primary', color);
           const hexToRgb = (hex: string) => {
             const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -106,7 +99,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
             return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
           };
           document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(color));
-          
           setDefaultLogoFailed(false);
           setError('');
         } catch (err) {

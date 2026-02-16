@@ -31,6 +31,14 @@ interface DashboardProps {
   playbook?: PlaybookItem[];
   onAddPlaybookItem?: (item: Omit<PlaybookItem, 'id'>) => void;
   onDeletePlaybookItem?: (id: string) => void;
+  // New props for feature integration
+  onOpenDrawer: () => void;
+  showBadge: boolean;
+  pendingActionsCount: number;
+  onOpenSettings: () => void;
+  clubName: string;
+  onUpdateClubName: (name: string) => void;
+  logo: string | null;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -56,7 +64,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteTrainingSession = () => {},
   playbook = [],
   onAddPlaybookItem = () => {},
-  onDeletePlaybookItem = () => {}
+  onDeletePlaybookItem = () => {},
+  onOpenDrawer,
+  showBadge,
+  pendingActionsCount,
+  onOpenSettings,
+  clubName,
+  onUpdateClubName,
+  logo
 }) => {
   const [currentTab, setCurrentTab] = useState<'matches' | 'squad' | 'training' | 'planner' | 'hub'>('matches');
   
@@ -73,24 +88,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return localStorage.getItem('RL_TRACKER_GUIDE_DISMISSED') === 'true';
   });
 
-  const [logoSrc, setLogoSrc] = useState('logo.png');
   const [logoError, setLogoError] = useState(false);
-  const [clubName, setClubName] = useState('');
+  const displayLogo = logo || 'logo.png';
+
   const [deleteMatchId, setDeleteMatchId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('RUGBY_TRACKER_LOGO');
-    if (saved) { setLogoSrc(saved); setLogoError(false); }
-    const savedName = localStorage.getItem('RUGBY_TRACKER_CLUB_NAME');
-    if (savedName) setClubName(savedName);
-  }, []);
-
-  const handleClubNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setClubName(val);
-    localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', val);
-  };
 
   const handleDismissGuide = () => {
     setIsGuideDismissed(true);
@@ -119,20 +121,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3 shrink-0 pr-4">
              {!logoError ? (
-               <img src={logoSrc} alt="Logo" className="w-9 h-9 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" onError={() => setLogoError(true)}/>
+               <img src={displayLogo} alt="Logo" className="w-9 h-9 rounded-xl object-contain shadow-sm bg-white border border-gray-100 dark:border-transparent dark:bg-white" onError={() => setLogoError(true)}/>
              ) : (
-               <div className="w-9 h-9 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-500/20">
+               <div className="w-9 h-9 bg-gradient-to-br from-brand to-brand-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/20">
                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
                </div>
              )}
-             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">LeagueLens<span className="text-red-600">.</span></span>
+             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white hidden sm:inline">LeagueLens<span className="text-brand">.</span></span>
           </div>
           <div className="flex-1 flex justify-center px-2">
-            <input type="text" value={clubName} onChange={handleClubNameChange} placeholder="ENTER TEAM NAME" className="bg-transparent text-center font-heading font-bold text-lg text-slate-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-200 dark:focus:placeholder-gray-700 uppercase tracking-wide w-full max-w-[250px] border-b border-transparent focus:border-gray-200 dark:focus:border-gray-700 transition-all hover:border-gray-100 dark:hover:border-gray-800 pb-0.5"/>
+            <input type="text" value={clubName} onChange={(e) => onUpdateClubName(e.target.value)} placeholder="ENTER TEAM NAME" className="bg-transparent text-center font-heading font-bold text-lg text-slate-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-200 dark:focus:placeholder-gray-700 uppercase tracking-wide w-full max-w-[250px] border-b border-transparent focus:border-gray-200 dark:focus:border-gray-700 transition-all hover:border-gray-100 dark:hover:border-gray-800 pb-0.5"/>
           </div>
-          <div className="flex items-center space-x-4 shrink-0 justify-end pl-4">
-             <span className="text-sm font-medium text-slate-500 dark:text-gray-400 hidden sm:inline">Coach: <span className="text-slate-900 dark:text-white font-heading">{currentUser}</span></span>
-             <button onClick={onLogout} className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors bg-red-50 dark:bg-red-900/20 dark:text-red-400 px-3 py-1.5 rounded-full">Log Out</button>
+          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0 justify-end pl-4">
+             <button 
+                onClick={onOpenDrawer}
+                className="relative w-9 h-9 flex items-center justify-center bg-slate-900 text-white rounded-xl shadow-md active:scale-95 transition-all hover:bg-slate-800"
+                title="Coach's Clipboard"
+             >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                {showBadge && (
+                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-brand border-2 border-white text-[9px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
+                   </span>
+                )}
+             </button>
+
+             <button 
+               onClick={onOpenSettings} 
+               className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all"
+               title="App Settings"
+             >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+               </svg>
+             </button>
+
+             <button onClick={onLogout} className="text-xs font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors bg-red-50 dark:bg-red-900/20 dark:text-red-400 w-9 h-9 sm:w-auto sm:px-3 sm:py-1.5 rounded-full flex items-center justify-center">
+               <span className="hidden sm:inline">Log Out</span>
+               <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+             </button>
+             
+             <div className="h-6 w-px bg-gray-200 dark:bg-white/10 hidden sm:block mx-1"></div>
+             
              <button onClick={toggleTheme} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>{darkMode ? (<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>) : (<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>)}</button>
           </div>
         </div>
@@ -162,8 +195,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="group bg-white dark:bg-[#1A1A1C] rounded-3xl p-8 shadow-apple dark:shadow-none hover:shadow-apple-hover transition-all duration-300 cursor-pointer border border-white dark:border-white/5 hover:scale-[1.01]" onClick={onNewMatch}>
                 <div className="flex items-start justify-between mb-8">
-                   <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-6"><svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></div>
-                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors text-gray-400 dark:text-gray-500"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></div>
+                   <div className="w-14 h-14 bg-brand/5 dark:bg-brand/10 text-brand rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-6"><svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></div>
+                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors text-gray-400 dark:text-gray-500"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></div>
                 </div>
                 <div><h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white mb-2">New Match</h2><p className="text-slate-500 dark:text-gray-400 font-medium">Start a blank session.</p></div>
               </div>
@@ -184,16 +217,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {!isGuideDismissed && (
               <div className="mb-12">
                 <button onClick={() => setShowGuide(!showGuide)} className="w-full flex items-center justify-between bg-white dark:bg-[#1A1A1C] px-6 py-4 rounded-2xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-all group">
-                  <div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><span className="font-heading font-bold text-slate-800 dark:text-white">How to use this app</span></div>
+                  <div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand dark:text-brand-400 flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><span className="font-heading font-bold text-slate-800 dark:text-white">How to use this app</span></div>
                   <svg className={`w-5 h-5 text-gray-400 transform transition-transform duration-300 ${showGuide ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {showGuide && (
                   <div className="mt-4 bg-white dark:bg-[#1A1A1C] rounded-3xl shadow-apple dark:shadow-none border border-gray-100 dark:border-white/5 p-6 sm:p-8 animate-in fade-in slide-in-from-top-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 1</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Build Squad</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Go to the <strong>Squad & Stats</strong> tab. Add your players once, and they will be saved forever.</p></div>
-                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 2</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Plan Team</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>Planner</strong> tab to select availability and map out your starting 13 on the visual field.</p></div>
-                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 3</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Track Live</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>+</strong> / <strong>-</strong> buttons to track stats. Use the <strong>T</strong> / <strong>K</strong> buttons for opponent scores.</p></div>
-                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 4</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Save Game</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Click <strong>End Match</strong>. This saves the game to history and updates career totals.</p></div>
+                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 1</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Build Squad</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Go to the <strong>Squad</strong> tab. Add your players once, and they will be saved forever across all matches. This builds the foundation for career statistics.</p></div>
+                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 2</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Plan Team</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Use the <strong>Planner</strong> tab to select availability and map out your starting 13 on the visual field before matchday. Click 'Lock In' to save your selection.</p></div>
+                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 3</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Track Live</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Hit <strong>New Match</strong>. Use the <strong>+</strong> / <strong>-</strong> buttons to track core stats. Use the <strong>Impact Play</strong> (lightning bolt) for game-defining moments.</p></div>
+                      <div className="relative"><div className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Step 4</div><h3 className="text-lg font-heading font-bold text-slate-900 dark:text-white mb-2">Save & Review</h3><p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Click <strong>End Match</strong>. This saves the game to history and updates career totals. You can then review detailed heatmaps and match reports.</p></div>
                     </div>
                     <div className="mt-6 pt-6 border-t border-gray-100 dark:border-white/5 flex justify-center"><button onClick={handleDismissGuide} className="text-xs font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest">Don't show this guide again</button></div>
                   </div>

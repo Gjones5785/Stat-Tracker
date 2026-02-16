@@ -2,23 +2,29 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AuthScreen } from './components/AuthScreen';
 import { Dashboard } from './components/Dashboard';
 import { MatchCharts } from './components/MatchCharts';
-import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem, Player, GameLogEntry, StatKey, PlayerStats } from './types';
+import { MatchHistoryItem, SquadPlayer, TrainingSession, PlaybookItem, Player, GameLogEntry, StatKey, PlayerStats, ActionItem, Coach, ActionCategory } from './types';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, orderBy, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, orderBy, setDoc, getDoc } from 'firebase/firestore';
 import { saveActiveMatchState, loadActiveMatchState, clearActiveMatchState } from './dbUtils';
 import { TeamSelectionModal } from './components/TeamSelectionModal';
 import { PlayerRow } from './components/PlayerRow';
 import { MatchEventLog } from './components/MatchEventLog';
 import { Button } from './components/Button';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { NoteModal } from './components/NoteModal';
 import { LocationPickerModal } from './components/LocationPickerModal';
 import { BigPlayModal } from './components/BigPlayModal';
 import { CardAssignmentModal } from './components/CardAssignmentModal';
-import { NotificationModal } from './components/NotificationModal';
 import { VotingModal } from './components/VotingModal';
-import { createInitialPlayers, INITIAL_STATS } from './constants';
+import { CoachDrawer } from './components/CoachDrawer';
+import { SettingsModal } from './components/SettingsModal';
+import { MobileActionOverlay } from './components/MobileActionOverlay';
+import { createInitialPlayers, INITIAL_STATS, STAT_CONFIGS, IMPACT_WEIGHTS } from './constants';
+
+// --- HELPERS ---
+const stripUndefined = (obj: any): any => {
+  return JSON.parse(JSON.stringify(obj));
+};
 
 // --- INTERNAL MATCH TRACKER COMPONENT ---
 
@@ -28,9 +34,23 @@ interface MatchTrackerProps {
   onFinish: (matchData: any) => void;
   onDiscard: () => void;
   onExit: () => void;
+  onOpenDrawer: () => void;
+  showBadge: boolean;
+  pendingActionsCount: number;
+  clubName: string;
 }
 
-const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFinish, onDiscard, onExit }) => {
+const MatchTracker: React.FC<MatchTrackerProps> = ({ 
+  initialState, 
+  squad, 
+  onFinish, 
+  onDiscard, 
+  onExit,
+  onOpenDrawer,
+  showBadge,
+  pendingActionsCount,
+  clubName
+}) => {
   const [players, setPlayers] = useState<Player[]>(initialState?.players || createInitialPlayers());
   const [gameLog, setGameLog] = useState<GameLogEntry[]>(initialState?.gameLog || []);
   const [matchTime, setMatchTime] = useState(initialState?.matchTime || 0);
@@ -38,7 +58,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   const [period, setPeriod] = useState<'1st' | '2nd'>(initialState?.period || '1st');
   const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
   const [homeScoreAdjustment, setHomeScoreAdjustment] = useState(initialState?.homeScoreAdjustment || 0);
-  const [teamName, setTeamName] = useState(initialState?.teamName || localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || 'My Team');
+  const [teamName, setTeamName] = useState(initialState?.teamName || clubName || 'My Team');
   const [opponentName, setOpponentName] = useState(initialState?.opponentName || 'Opponent');
   
   const [completedSets, setCompletedSets] = useState(initialState?.completedSets || 0);
@@ -54,6 +74,9 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   const [bigPlayModal, setBigPlayModal] = useState<{ isOpen: boolean; playerId: string }>({ isOpen: false, playerId: '' });
   const [cardModal, setCardModal] = useState<{ isOpen: boolean; type: 'yellow' | 'red' | null }>({ isOpen: false, type: null });
   const [pendingStat, setPendingStat] = useState<{ playerId: string; key: StatKey; delta: number } | null>(null);
+  
+  // Mobile Specific State
+  const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     let interval: any;
@@ -97,8 +120,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   const derivedHomeScore = players.reduce((acc, p) => acc + (p.stats.triesScored * 4) + (p.stats.kicks * 2), 0);
   const teamScore = derivedHomeScore + homeScoreAdjustment;
   const formattedTime = `${Math.floor(matchTime / 60).toString().padStart(2, '0')}:${(matchTime % 60).toString().padStart(2, '0')}`;
-  const completionRate = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
-
+  
   const handleTeamSelection = (selections: { jersey: string; squadId: string; name: string }[]) => {
     const newPlayers = createInitialPlayers();
     selections.forEach(sel => {
@@ -177,6 +199,7 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
     }
   };
 
+  // Fix: Added check p.id === id instead of incorrectly using id === id
   const handleIdentityChange = (id: string, field: 'name' | 'number', value: string) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
@@ -250,37 +273,33 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
   };
 
   const finishMatch = (votes: any) => {
-     try {
-       const matchData = {
-          date: new Date().toISOString().split('T')[0],
-          teamName: teamName || 'My Team',
-          opponentName: opponentName || 'Opponent',
-          finalScore: `${teamScore} - ${opponentScore}`,
-          result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
-          data: {
-             players: JSON.parse(JSON.stringify(players)),
-             gameLog: JSON.parse(JSON.stringify(gameLog)),
-             matchTime,
-             period,
-             sets: { completed: completedSets, total: totalSets },
-             homeScoreAdjustment
-          },
-          voting: votes || null
-       };
-       onFinish(matchData);
-     } catch (err) {
-       console.error("Error finishing match:", err);
-     }
+     onFinish({
+        date: new Date().toISOString().split('T')[0],
+        teamName,
+        opponentName,
+        finalScore: `${teamScore} - ${opponentScore}`,
+        result: teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw',
+        data: {
+           players,
+           gameLog,
+           matchTime,
+           period,
+           completedSets,
+           totalSets,
+           homeScoreAdjustment
+        },
+        voting: votes || null
+     });
   };
 
   const handleSetComplete = () => {
-     if (!isRunning) { setTimerError(true); setTimeout(() => setTimerError(false), 500); return; }
+     if (!isRunning) return;
      setCompletedSets(prev => prev + 1);
      setTotalSets(prev => prev + 1);
   };
 
   const handleSetIncomplete = () => {
-     if (!isRunning) { setTimerError(true); setTimeout(() => setTimerError(false), 500); return; }
+     if (!isRunning) return;
      setTotalSets(prev => prev + 1);
   };
 
@@ -303,77 +322,104 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-midnight-950 font-sans transition-colors duration-300 overflow-hidden">
-       {/* ULTRA-COMPACT HEADER FOR TABLET */}
-       <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-sm z-40 py-1">
-          <div className="w-full max-w-[1920px] mx-auto px-4 flex items-center justify-between gap-2">
-             {/* Left Side: Navigation & Clock */}
-             <div className="flex items-center gap-2 shrink-0">
-                 <button onClick={onExit} className="w-7 h-7 flex items-center justify-center rounded bg-gray-50 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+       {/* HEADER: Compacted to save vertical space */}
+       <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-sm z-40 py-2">
+          <div className="w-full max-w-[1920px] mx-auto px-4 flex items-center justify-between gap-4 h-full">
+             
+             {/* LEFT SECTION */}
+             <div className="flex items-center gap-3 shrink-0">
+                 <button onClick={onExit} className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 transition-colors border border-gray-100 dark:border-midnight-600">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
                  </button>
                  <button 
                    onClick={() => setIsRunning(!isRunning)}
-                   className={`px-3 py-1 rounded-lg border-2 transition-all active:scale-95 flex items-center gap-2 ${isRunning ? 'bg-white text-red-500 border-red-500' : 'bg-green-500 text-white border-green-600'} ${timerError ? 'animate-shake' : ''}`}
+                   className={`px-4 py-1.5 rounded-lg border-2 transition-all active:scale-95 flex items-center gap-3 ${isRunning ? 'bg-white text-red-500 border-red-500' : 'bg-green-500 text-white border-green-600'} shadow-sm`}
                  >
-                    <span className="text-2xl font-jersey font-medium tracking-wider leading-none">{formattedTime}</span>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-white'}`}></div>
+                    <span className="text-3xl font-jersey font-medium tracking-wider leading-none pt-1">{formattedTime}</span>
+                    <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-white'}`}></div>
                  </button>
              </div>
 
-             {/* Combined Center: Scoreboard & Completion (ALL ON ONE LINE) */}
-             <div className="flex-1 flex items-center justify-center gap-4 px-2 overflow-hidden">
-                <div className="flex items-center gap-2 min-w-0">
-                   <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="bg-transparent text-right font-heading font-black text-xs md:text-sm text-slate-800 dark:text-white w-20 md:w-32 focus:outline-none truncate" />
-                   <input type="number" value={teamScore} onChange={(e) => setHomeScoreAdjustment((parseInt(e.target.value) || 0) - derivedHomeScore)} className="text-3xl font-jersey font-medium text-blue-600 dark:text-neon-blue w-10 text-center bg-transparent outline-none" />
+             {/* CENTER SECTION: Scoreboard */}
+             <div className="flex-1 flex items-center justify-center gap-4 px-1 overflow-hidden">
+                <div className="flex items-center gap-4 min-w-0">
+                    <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="hidden md:block bg-transparent text-right font-heading font-black text-2xl text-slate-800 dark:text-white w-48 focus:outline-none truncate placeholder-gray-300" placeholder="HOME" />
+                    <span className="text-5xl font-jersey font-medium text-blue-600 dark:text-blue-400 tracking-tighter">{teamScore}</span>
                 </div>
-                <div className="text-gray-300 font-light">-</div>
-                <div className="flex items-center gap-2 min-w-0">
-                   <div className="flex items-center">
-                     <input type="number" value={opponentScore} onChange={(e) => setOpponentScore(Math.max(0, parseInt(e.target.value) || 0))} className="text-3xl font-jersey font-medium text-red-500 dark:text-red-400 w-10 text-center bg-transparent outline-none" />
-                     <div className="flex flex-col scale-75 origin-left">
-                        <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-5 h-4 bg-gray-100 rounded text-[7px] font-black mb-0.5">+T</button>
-                        <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-5 h-4 bg-gray-100 rounded text-[7px] font-black">+K</button>
-                     </div>
-                   </div>
-                   <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} className="bg-transparent text-left font-heading font-black text-xs md:text-sm text-slate-800 dark:text-white w-20 md:w-32 focus:outline-none truncate" />
+                <div className="text-gray-300 font-light text-3xl opacity-50 italic">/</div>
+                <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center">
+                      <span className="text-5xl font-jersey font-medium text-red-500 dark:text-red-400 tracking-tighter">{opponentScore}</span>
+                      <div className="flex flex-col ml-2 space-y-0.5">
+                         <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-8 h-5 bg-gray-100 dark:bg-white/10 rounded text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+T</button>
+                         <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-8 h-5 bg-gray-100 dark:bg-white/10 rounded text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+K</button>
+                      </div>
+                    </div>
+                    <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} className="hidden md:block bg-transparent text-left font-heading font-black text-2xl text-slate-800 dark:text-white w-48 focus:outline-none truncate placeholder-gray-300" placeholder="AWAY" />
                 </div>
 
-                {/* Vertical Divider */}
-                <div className="w-px h-5 bg-gray-200 dark:bg-white/10 hidden md:block"></div>
-
-                {/* Inline Set Completion */}
-                <div className={`hidden sm:flex items-center gap-2 bg-gray-50 dark:bg-white/5 px-2 py-0.5 rounded-full border border-gray-100 dark:border-white/10 ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
-                   <button onClick={handleSetComplete} className="w-4 h-4 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95"><svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M5 13l4 4L19 7" /></svg></button>
-                   <div className="font-jersey text-sm tracking-widest text-slate-900 dark:text-white">{completedSets}/{totalSets} <span className="ml-1 text-[8px] opacity-70">Sets</span></div>
-                   <button onClick={handleSetIncomplete} className="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95"><svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={5} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <div className="w-px h-10 bg-gray-200 dark:bg-white/10 hidden md:block mx-4"></div>
+                <div className={`hidden md:flex items-center gap-4 bg-gray-50 dark:bg-white/5 px-5 py-2 rounded-xl border border-gray-100 dark:border-white/10 ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
+                   <button onClick={handleSetComplete} className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95 hover:bg-green-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg></button>
+                   <div className="font-jersey text-2xl tracking-[0.1em] text-slate-900 dark:text-white pt-1">{completedSets}/{totalSets} <span className="ml-1 text-[10px] opacity-70 font-sans font-black uppercase text-gray-400">Sets</span></div>
+                   <button onClick={handleSetIncomplete} className="w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95 hover:bg-red-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
              </div>
 
-             {/* Right Side: Branding & Controls */}
+             {/* RIGHT SECTION */}
              <div className="flex items-center gap-3 shrink-0">
-                <div className="hidden lg:flex flex-col items-end">
-                   <span className="font-heading font-black text-[10px] tracking-tight text-slate-900 dark:text-white uppercase">LeagueLens<span className="text-red-600">.</span></span>
-                </div>
-                <Button onClick={handlePeriodEnd} variant="secondary" className="px-3 py-1 h-auto text-[9px] font-black uppercase tracking-wider bg-red-50 text-red-600 border border-red-100 rounded shadow-none whitespace-nowrap">
-                   {period === '1st' ? 'End 1st' : 'End Match'}
+                <Button onClick={handlePeriodEnd} variant="secondary" className="px-5 py-2.5 h-auto text-xs font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 rounded-lg shadow-none whitespace-nowrap hover:bg-red-100 transition-colors">
+                   {period === '1st' ? 'End 1st Half' : 'End Match'}
                 </Button>
              </div>
           </div>
        </header>
 
-       {/* MAIN CONTENT AREA - EVEN HIGHER DENSITY */}
-       <main className={`flex-1 flex flex-col min-h-0 w-full max-w-[1920px] mx-auto px-1 pt-1 transition-all duration-300 ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
-          <div className="flex-1 bg-white dark:bg-midnight-800 rounded-lg shadow-sm border border-gray-200 dark:border-midnight-700 overflow-hidden flex flex-col min-h-0 mb-1">
+       {/* CONTENT AREA: Optimized for visibility of 10 players */}
+       <main className={`flex-1 flex flex-col min-h-0 w-full max-w-[1920px] mx-auto px-1 pt-1 transition-all duration-300 overflow-hidden ${!isRunning ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+          
+          {/* MOBILE VIEW */}
+          <div className="flex-1 overflow-y-auto md:hidden p-3 custom-scrollbar">
+             <div className="grid grid-cols-3 gap-3 pb-20">
+                {sortedPlayersList.map(p => {
+                   const isOff = !p.isOnField && p.cardStatus === 'none';
+                   const isBin = p.cardStatus === 'yellow';
+                   const isSent = p.cardStatus === 'red';
+                   
+                   let cardClass = "bg-white dark:bg-[#1A1A1C] border-gray-200 dark:border-white/10";
+                   if (isOff) cardClass = "bg-gray-100 dark:bg-white/5 border-transparent opacity-60";
+                   if (isBin) cardClass = "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-400 animate-pulse";
+                   if (isSent) cardClass = "bg-red-50 dark:bg-red-900/10 border-red-600 opacity-80 grayscale";
+
+                   return (
+                      <div 
+                        key={p.id}
+                        onClick={() => setSelectedMobilePlayerId(p.id)}
+                        className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center relative shadow-sm active:scale-95 transition-all ${cardClass}`}
+                      >
+                         <span className={`text-4xl font-jersey font-bold leading-none ${isOff ? 'text-gray-400' : 'text-slate-900 dark:text-white'}`}>{p.number}</span>
+                         <span className="text-[10px] font-bold text-center truncate w-full px-2 mt-1 text-slate-500 dark:text-gray-400">{p.name || 'Player'}</span>
+                         
+                         {isBin && <div className="absolute top-2 right-2 w-3 h-4 bg-yellow-400 rounded-sm border border-yellow-600 shadow-sm"></div>}
+                         {isSent && <div className="absolute top-2 right-2 w-3 h-4 bg-red-600 rounded-sm border border-red-800 shadow-sm"></div>}
+                      </div>
+                   );
+                })}
+             </div>
+          </div>
+
+          {/* TABLE VIEW: Heights optimized for 10+ visible players */}
+          <div className="hidden md:flex flex-1 bg-white dark:bg-midnight-800 rounded-xl shadow-sm border border-gray-200 dark:border-midnight-700 overflow-hidden flex-col min-h-0 mb-4 mx-6">
              <div className="flex-1 overflow-auto custom-scrollbar relative">
                <table className="w-full min-w-max border-collapse text-left">
-                  <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-200 dark:border-midnight-700 sticky top-0 z-20">
+                  <thead className="bg-gray-100 dark:bg-midnight-900 border-b border-gray-200 dark:border-midnight-700 sticky top-0 z-20">
                      <tr>
-                        <th className="p-1 text-left w-12 sticky left-0 z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[8px] font-black text-gray-400 uppercase tracking-widest pl-2">#</th>
-                        <th className="p-1 text-left min-w-[140px] sticky left-[48px] z-30 bg-gray-50 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-[8px] font-black text-gray-400 uppercase tracking-widest pl-2">Player</th>
-                        {Object.keys(INITIAL_STATS).slice(0, 6).map(k => (
-                           <th key={k} className="p-1 text-center min-w-[80px] text-[7px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">{k.replace(/([A-Z])/g, ' $1').trim()}</th>
+                        <th className="p-3 text-left w-16 sticky left-0 z-30 bg-gray-100 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-xs font-black text-gray-400 uppercase tracking-widest pl-5">#</th>
+                        <th className="p-3 text-left min-w-[200px] sticky left-[64px] z-30 bg-gray-100 dark:bg-midnight-900 border-r border-gray-200 dark:border-midnight-700 shadow-sm text-xs font-black text-gray-400 uppercase tracking-widest pl-5">Player</th>
+                        {STAT_CONFIGS.map(sc => (
+                           <th key={sc.key} className="p-3 text-center min-w-[110px] text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">{sc.label}</th>
                         ))}
-                        <th className="p-1 text-center min-w-[70px] w-16 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[7px] tracking-tighter">Impact</th>
+                        <th className="p-3 text-center min-w-[90px] w-24 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[10px] tracking-tighter">Impact</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-midnight-700">
@@ -399,30 +445,80 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({ initialState, squad, onFini
           </div>
        </main>
 
-       {/* ULTRA-COMPACT FLOATING FOOTER */}
-       <div className={`shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-md border-t border-gray-200 p-1 z-50 shadow-md transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
-          <div className="max-w-xl mx-auto flex items-center justify-center space-x-2">
-             <button onClick={() => setIsLogOpen(true)} className="flex items-center justify-center w-8 h-8 bg-gray-50 rounded border border-gray-200 shadow-sm active:scale-95 transition-all">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
+       {/* MOBILE ACTION BAR */}
+       <div className="md:hidden shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-md border-t border-gray-200 dark:border-midnight-700 p-2 z-50 flex justify-between items-center safe-area-bottom">
+          <button onClick={onExit} className="p-3 rounded-full bg-gray-100 dark:bg-white/5 text-gray-500">
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          
+          <button 
+             onClick={() => setIsRunning(!isRunning)}
+             className={`flex-1 mx-4 h-12 rounded-2xl flex items-center justify-center gap-3 font-jersey text-3xl tracking-widest shadow-lg transition-all ${
+                isRunning ? 'bg-white text-red-500 border-2 border-red-500' : 'bg-green-500 text-white'
+             }`}
+          >
+             {formattedTime}
+             <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-white'}`}></div>
+          </button>
+
+          <button onClick={handlePeriodEnd} className="px-4 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black uppercase tracking-widest shadow-lg">
+             {period === '1st' ? 'HT' : 'FT'}
+          </button>
+       </div>
+
+       {/* DESKTOP FOOTER: Sized down to give more space for list */}
+       <div className={`hidden md:block shrink-0 bg-white/95 dark:bg-midnight-900/95 backdrop-blur-md border-t border-gray-200 dark:border-midnight-700 p-4 z-50 shadow-md transition-all duration-300 ${!isRunning ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+          <div className="max-w-4xl mx-auto flex items-center justify-center space-x-5">
+             <button onClick={() => setIsLogOpen(true)} className="flex items-center justify-center w-12 h-12 bg-gray-50 dark:bg-midnight-800 rounded-xl border border-gray-200 dark:border-midnight-600 shadow-sm active:scale-95 transition-all hover:bg-gray-100 dark:hover:bg-midnight-700">
+                <svg className="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
              </button>
-             <button onClick={() => setCardModal({ isOpen: true, type: 'yellow' })} className="flex items-center justify-center px-2 h-8 bg-yellow-50 rounded border border-yellow-200 active:scale-95 transition-all">
-                <div className="w-2.5 h-3.5 bg-yellow-400 rounded-sm mr-1.5 border border-yellow-600"></div>
-                <span className="text-[7px] font-black uppercase text-yellow-700">Bin</span>
+             
+             <button 
+                onClick={onOpenDrawer}
+                className="relative flex items-center justify-center w-12 h-12 bg-slate-900 text-white rounded-xl border border-slate-700 shadow-sm active:scale-95 transition-all hover:bg-slate-800"
+             >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                {showBadge && (
+                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border border-white text-[9px] font-black items-center justify-center text-white">{pendingActionsCount}</span>
+                   </span>
+                )}
              </button>
-             <button onClick={() => setCardModal({ isOpen: true, type: 'red' })} className="flex items-center justify-center px-2 h-8 bg-red-50 rounded border border-red-200 active:scale-95 transition-all">
-                <div className="w-2.5 h-3.5 bg-red-600 rounded-sm mr-1.5 border border-red-800"></div>
-                <span className="text-[7px] font-black uppercase text-red-700">Off</span>
+
+             <button onClick={() => setCardModal({ isOpen: true, type: 'yellow' })} className="flex items-center justify-center px-6 h-12 bg-yellow-50 rounded-xl border border-yellow-200 active:scale-95 transition-all hover:bg-yellow-100 shadow-sm">
+                <div className="w-4 h-5 bg-yellow-400 rounded-sm mr-3 border border-yellow-600 shadow-sm"></div>
+                <span className="text-xs font-black uppercase text-yellow-700 tracking-wider">Bin</span>
              </button>
-             <div className="w-px h-5 bg-gray-200 mx-1"></div>
+             <button onClick={() => setCardModal({ isOpen: true, type: 'red' })} className="flex items-center justify-center px-6 h-12 bg-red-50 rounded-xl border border-red-200 active:scale-95 transition-all hover:bg-red-100 shadow-sm">
+                <div className="w-4 h-5 bg-red-600 rounded-sm mr-3 border border-red-800 shadow-sm"></div>
+                <span className="text-xs font-black uppercase text-red-700 tracking-wider">Off</span>
+             </button>
+             
+             <div className="w-px h-8 bg-gray-200 dark:bg-white/10 mx-2"></div>
+             
              <button 
                onClick={() => setBigPlayModal({ isOpen: true, playerId: players.find(p => p.isOnField)?.id || players[0].id })} 
-               className="flex-1 h-8 bg-slate-900 dark:bg-white rounded shadow-sm flex items-center justify-center space-x-1 active:scale-95 group"
+               className="flex-1 h-12 bg-slate-900 dark:bg-white rounded-xl shadow-lg flex items-center justify-center space-x-3 active:scale-95 group hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors border border-transparent dark:border-white"
              >
-                <span className="text-sm group-hover:animate-pulse">⚡</span>
-                <span className="text-white dark:text-slate-900 font-heading font-black text-[10px] uppercase tracking-widest">Impact Play</span>
+                <span className="text-xl group-hover:animate-pulse">⚡</span>
+                <span className="text-white dark:text-slate-900 font-heading font-black text-sm uppercase tracking-widest">Impact Play</span>
              </button>
           </div>
        </div>
+
+       {/* MODALS */}
+       {selectedMobilePlayerId && (
+          <MobileActionOverlay 
+             player={players.find(p => p.id === selectedMobilePlayerId) || players[0]}
+             onClose={() => setSelectedMobilePlayerId(null)}
+             onStatChange={updateStat}
+             onToggleField={handleToggleField}
+             onCardAction={handleCardAction}
+             onBigPlay={handleBigPlayOpen}
+          />
+       )}
 
        <TeamSelectionModal isOpen={isTeamModalOpen} squad={squad} onConfirm={handleTeamSelection} onCancel={() => setIsTeamModalOpen(false)} />
        <LocationPickerModal isOpen={locModal.isOpen} title="Mark Location" stat={locModal.stat} onConfirm={handleLocationConfirm} onCancel={() => { setLocModal({ isOpen: false }); setPendingStat(null); }} />
@@ -442,29 +538,91 @@ export const App: React.FC = () => {
   const [trainingHistory, setTrainingHistory] = useState<TrainingSession[]>([]);
   const [playbook, setPlaybook] = useState<PlaybookItem[]>([]);
   
+  // -- Global Feature State (Drawer & Settings) --
+  const [actions, setActions] = useState<ActionItem[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [hasViewedActions, setHasViewedActions] = useState(false);
+
   const [activeMatch, setActiveMatch] = useState<any>(null);
   const [viewingMatch, setViewingMatch] = useState<MatchHistoryItem | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
   const [hasResumableMatch, setHasResumableMatch] = useState(false);
   const [editingVoteMatch, setEditingVoteMatch] = useState<MatchHistoryItem | null>(null);
 
+  // Settings State with LocalStorage Persistence
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('LEAGUELENS_SETTINGS');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved settings", e);
+    }
+    return {
+       clubName: localStorage.getItem('RUGBY_TRACKER_CLUB_NAME') || '',
+       logo: localStorage.getItem('RUGBY_TRACKER_LOGO') || null,
+       primaryColor: localStorage.getItem('RUGBY_TRACKER_BRAND_COLOR') || '#E02020',
+       defaultHalfDuration: 40,
+       sinBinDuration: 10,
+       interchangeLimit: 'Limited',
+       hapticFeedback: true,
+       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+       weights: { ...IMPACT_WEIGHTS }
+    };
+  });
+
   const activeSquad = useMemo(() => squad.filter(p => p.active !== false), [squad]);
 
+  // Auth Listener
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) { setSquad([]); setHistory([]); setTrainingHistory([]); setPlaybook([]); }
+      if (!u) { 
+        setSquad([]); 
+        setHistory([]); 
+        setTrainingHistory([]); 
+        setPlaybook([]); 
+        setActions([]); 
+        setCoaches([]); 
+        setHasViewedActions(false);
+      } else {
+        // Load user-specific settings from Firestore if available
+        getDoc(doc(db, 'users', u.uid)).then(snap => {
+           if (snap.exists()) {
+              const data = snap.data();
+              setSettings(prev => ({
+                 ...prev,
+                 clubName: data.clubName || prev.clubName,
+                 logo: data.logo || prev.logo,
+                 primaryColor: data.brandColor || prev.primaryColor
+              }));
+           }
+        });
+      }
     });
   }, []);
 
+  // Theme & Settings Effect
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
-  }, []);
+    try {
+      if (settings.darkMode) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
 
-  useEffect(() => {
-    if (darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [darkMode]);
+      document.documentElement.style.setProperty('--brand-primary', settings.primaryColor);
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '224, 32, 32';
+      };
+      document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(settings.primaryColor));
+      
+      localStorage.setItem('LEAGUELENS_SETTINGS', JSON.stringify(settings));
+      localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', settings.clubName);
+      localStorage.setItem('RUGBY_TRACKER_BRAND_COLOR', settings.primaryColor);
+      if (settings.logo) localStorage.setItem('RUGBY_TRACKER_LOGO', settings.logo);
+    } catch (err) {
+      console.error("Failed to sync settings to storage:", err);
+    }
+  }, [settings]);
 
   useEffect(() => {
     loadActiveMatchState().then(data => { if (data) setHasResumableMatch(true); });
@@ -484,7 +642,13 @@ export const App: React.FC = () => {
     const unsubPlaybook = onSnapshot(query(collection(db, `users/${user.uid}/playbook`), orderBy('createdAt', 'desc')), (snap) => {
         setPlaybook(snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem)));
     });
-    return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); };
+    const unsubActions = onSnapshot(query(collection(db, `users/${user.uid}/actions`), orderBy('createdAt', 'desc')), (snap) => {
+        setActions(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActionItem)));
+    });
+    const unsubCoaches = onSnapshot(query(collection(db, `users/${user.uid}/coaches`), orderBy('name')), (snap) => {
+        setCoaches(snap.docs.map(d => ({ id: d.id, ...d.data() } as Coach)));
+    });
+    return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); unsubActions(); unsubCoaches(); };
   }, [user]);
 
   const handleNewMatch = () => setActiveMatch({});
@@ -498,13 +662,15 @@ export const App: React.FC = () => {
   const handleFinishMatch = async (matchData: any) => {
     if (!user) return;
     try {
-      await addDoc(collection(db, `users/${user.uid}/matches`), matchData);
+      const cleanedData = stripUndefined(matchData);
+      await addDoc(collection(db, `users/${user.uid}/matches`), cleanedData);
       await clearActiveMatchState();
       setActiveMatch(null);
       setHasResumableMatch(false);
     } catch (e) { console.error(e); }
   };
 
+  // CRUD Handlers
   const handleAddSquadPlayer = async (p: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/squad`), { ...p, active: true, createdAt: Date.now() }); };
   const handleRemoveSquadPlayer = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/squad`, id)); };
   const handleUpdateSquadPlayer = async (id: string, updates: any) => { if(!user) return; await updateDoc(doc(db, `users/${user.uid}/squad`, id), updates); };
@@ -515,16 +681,107 @@ export const App: React.FC = () => {
   const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
   const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
 
+  // Coach Drawer Handlers
+  const handleAddAction = async (content: string, category: ActionCategory) => {
+     if (!user) return;
+     let matchTimestamp: string | null = null;
+     if (activeMatch && typeof activeMatch.matchTime === 'number') {
+        const time = activeMatch.matchTime;
+        matchTimestamp = `[${Math.floor(time / 60).toString().padStart(2, '0')}:${(time % 60).toString().padStart(2, '0')}]`;
+     }
+     const actionData = {
+        content,
+        category,
+        assignedCoachId: coaches[0]?.id || '',
+        isCompleted: false,
+        timestamp: new Date().toISOString(),
+        matchTimestamp,
+        createdAt: Date.now()
+     };
+     await addDoc(collection(db, `users/${user.uid}/actions`), stripUndefined(actionData));
+  };
+
+  const handleToggleAction = async (id: string) => {
+     if (!user) return;
+     const item = actions.find(a => a.id === id);
+     if (item) await updateDoc(doc(db, `users/${user.uid}/actions`, id), { isCompleted: !item.isCompleted });
+  };
+
+  const handleDeleteAction = async (id: string) => {
+     if (!user) return;
+     await deleteDoc(doc(db, `users/${user.uid}/actions`, id));
+  };
+
+  const handleCycleCoach = async (actionId: string) => {
+     if (!user || coaches.length === 0) return;
+     const action = actions.find(a => a.id === actionId);
+     if (!action) return;
+     const currentIndex = coaches.findIndex(c => c.id === action.assignedCoachId);
+     const nextIndex = (currentIndex + 1) % coaches.length;
+     await updateDoc(doc(db, `users/${user.uid}/actions`, actionId), { assignedCoachId: coaches[nextIndex].id });
+  };
+
+  const handleAddCoach = async (name: string) => {
+     if (!user) return;
+     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+     const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600', 'bg-orange-600', 'bg-indigo-600'];
+     const color = colors[coaches.length % colors.length];
+     await addDoc(collection(db, `users/${user.uid}/coaches`), stripUndefined({ name, initials, color }));
+  };
+
+  const handleDeleteCoach = async (id: string) => {
+     if (!user) return;
+     await deleteDoc(doc(db, `users/${user.uid}/coaches`, id));
+  };
+
+  const handleOpenDrawer = () => {
+    setIsDrawerOpen(true);
+    setHasViewedActions(true);
+  };
+
+  const updateClubName = (name: string) => {
+     setSettings(prev => ({ ...prev, clubName: name }));
+  };
+
+  const pendingActionsCount = actions.filter(a => !a.isCompleted).length;
+  const showNotificationBadge = pendingActionsCount > 0 && !hasViewedActions;
+
   if (!user) return <AuthScreen onLogin={setUser} />;
 
   if (activeMatch) return (
-    <MatchTracker 
-      initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
-      squad={activeSquad}
-      onFinish={handleFinishMatch}
-      onDiscard={handleDiscardMatch}
-      onExit={handleExitMatch}
-    />
+    <>
+      <MatchTracker 
+        initialState={Object.keys(activeMatch).length > 0 ? activeMatch : undefined}
+        squad={activeSquad}
+        onFinish={handleFinishMatch}
+        onDiscard={handleDiscardMatch}
+        onExit={handleExitMatch}
+        onOpenDrawer={handleOpenDrawer}
+        showBadge={showNotificationBadge}
+        pendingActionsCount={pendingActionsCount}
+        clubName={stripUndefined(settings.clubName)}
+      />
+      {/* GLOBAL OVERLAYS */}
+      <CoachDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)}
+        actions={actions}
+        coaches={coaches}
+        onAddAction={handleAddAction}
+        onToggleAction={handleToggleAction}
+        onDeleteAction={handleDeleteAction}
+        onCycleCoach={handleCycleCoach}
+        onAddCoach={handleAddCoach}
+        onDeleteCoach={handleDeleteCoach}
+      />
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={setSettings}
+        coachInfo={{ name: user.displayName || 'Coach', email: user.email || '' }}
+      />
+    </>
   );
 
   if (viewingMatch) {
@@ -564,8 +821,13 @@ export const App: React.FC = () => {
         onAddSquadPlayer={handleAddSquadPlayer}
         onRemoveSquadPlayer={handleRemoveSquadPlayer}
         onUpdateSquadPlayer={handleUpdateSquadPlayer}
-        darkMode={darkMode}
-        toggleTheme={() => setDarkMode(!darkMode)}
+        // PRO FEATURES Integration
+        onOpenDrawer={handleOpenDrawer}
+        showBadge={showNotificationBadge}
+        pendingActionsCount={pendingActionsCount}
+        // Settings Integration
+        onOpenSettings={() => setIsSettingsOpen(true)} // Added prop
+        // Feature Integration
         trainingHistory={trainingHistory}
         onSaveTrainingSession={handleSaveTraining}
         onUpdateTrainingSession={handleUpdateTraining}
@@ -573,6 +835,11 @@ export const App: React.FC = () => {
         playbook={playbook}
         onAddPlaybookItem={handleAddPlaybookItem}
         onDeletePlaybookItem={handleDeletePlaybookItem}
+        clubName={stripUndefined(settings.clubName)}
+        onUpdateClubName={updateClubName}
+        logo={settings.logo}
+        darkMode={settings.darkMode}
+        toggleTheme={() => setSettings(prev => ({...prev, darkMode: !prev.darkMode}))}
       />
       {editingVoteMatch && (
         <VotingModal 
@@ -582,12 +849,32 @@ export const App: React.FC = () => {
           isEditing={true}
           onConfirm={async (votes) => {
             if (!user) return;
-            await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), { voting: votes });
+            await updateDoc(doc(db, `users/${user.uid}/matches`, editingVoteMatch.id), { voting: stripUndefined(votes) });
             setEditingVoteMatch(null);
           }}
           onSkip={() => setEditingVoteMatch(null)}
         />
       )}
+      {/* GLOBAL OVERLAYS (Dashboard) */}
+      <CoachDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)}
+        actions={actions}
+        coaches={coaches}
+        onAddAction={handleAddAction}
+        onToggleAction={handleToggleAction}
+        onDeleteAction={handleDeleteAction}
+        onCycleCoach={handleCycleCoach}
+        onAddCoach={handleAddCoach}
+        onDeleteCoach={handleDeleteCoach}
+      />
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={setSettings}
+        coachInfo={{ name: user.displayName || 'Coach', email: user.email || '' }}
+      />
     </>
   );
 };

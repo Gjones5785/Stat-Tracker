@@ -161,3 +161,25 @@ export interface TacticsData {
   frames: TacticFrame[];
   pitchType: 'full' | 'half';
 }
+
+// --- COACHING NOTES & ACTIONS ---
+
+export type ActionCategory = 'Tactical' | 'Logistics' | 'Medical' | 'Admin';
+
+export interface Coach {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+}
+
+export interface ActionItem {
+  id: string;
+  content: string;
+  category: ActionCategory;
+  assignedCoachId: string;
+  isCompleted: boolean;
+  timestamp: string; // ISO string
+  matchTimestamp?: string; // e.g. "[24:15]"
+  createdAt: number;
+}

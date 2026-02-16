@@ -52,7 +52,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     statusBadge = (
       <button 
         onClick={() => !isReadOnly && onRemoveCard(player.id)}
-        className="mt-0.5 text-[5px] font-black bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1"
+        className="mt-0.5 text-[5px] md:text-[8px] font-black bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-90"
       >
         BIN ✕
       </button>
@@ -63,7 +63,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
     statusBadge = (
       <button 
         onClick={() => !isReadOnly && onRemoveCard(player.id)}
-        className="mt-0.5 text-[5px] font-black bg-red-600 text-white px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1"
+        className="mt-0.5 text-[5px] md:text-[8px] font-black bg-red-600 text-white px-1 py-0.5 rounded uppercase shadow-sm flex items-center gap-1 active:scale-90"
       >
         OFF ✕
       </button>
@@ -73,7 +73,7 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
       <button
         onClick={() => !isReadOnly && onToggleFieldStatus(player.id)}
         disabled={isReadOnly}
-        className={`mt-0.5 text-[5px] font-black uppercase px-1 py-0.5 rounded border transition-all active:scale-95 ${
+        className={`mt-0.5 text-[5px] md:text-[9px] font-black uppercase px-1 py-0.5 md:px-2 rounded border transition-all active:scale-95 ${
           player.isOnField 
             ? 'bg-green-50 text-green-600 border-green-200' 
             : 'bg-red-50 text-red-500 border-red-200'
@@ -111,15 +111,15 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
   else if (impactScore < 0) impactColor = 'bg-red-600 text-white border-none shadow-sm';
 
   return (
-    <tr className={`${rowClass} border-b border-gray-100 dark:border-midnight-700 transition-colors`}>
-      <td className={`p-0.5 sticky left-0 z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
+    <tr className={`${rowClass} border-b border-gray-100 dark:border-midnight-700 transition-colors h-16 md:h-[65px]`}>
+      <td className={`p-1 sticky left-0 z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
         <div className="flex flex-col items-center">
-          <div className={`w-7 h-7 border-[1.5px] rounded flex items-center justify-center shadow-sm transition-all ${jerseyBoxClass}`}>
+          <div className={`w-8 h-8 md:w-10 md:h-9 border-[1.5px] rounded flex items-center justify-center shadow-sm transition-all ${jerseyBoxClass}`}>
             <input
               type="text"
               value={player.number}
               onChange={(e) => onIdentityChange(player.id, 'number', e.target.value)}
-              className={`w-full text-center font-jersey text-lg font-medium tracking-wide bg-transparent outline-none ${jerseyTextClass}`}
+              className={`w-full text-center font-jersey text-xl md:text-2xl font-medium tracking-wide bg-transparent outline-none pt-0.5 ${jerseyTextClass}`}
               disabled={isReadOnly}
             />
           </div>
@@ -127,19 +127,19 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         </div>
       </td>
 
-      <td className={`p-0.5 sticky left-[48px] z-10 ${rowClass} border-r border-gray-100 dark:border-midnight-700`}>
+      <td className={`p-2 sticky left-[64px] z-10 ${rowClass} border-r border-gray-200 dark:border-midnight-700`}>
         <input
           type="text"
           value={player.name}
           onChange={(e) => onIdentityChange(player.id, 'name', e.target.value)}
-          className="w-full px-1 py-1 bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white font-heading font-semibold text-xs placeholder-gray-200"
+          className="w-full px-1 py-0.5 bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white font-heading font-black text-xs md:text-sm placeholder-gray-200 truncate"
           placeholder="Name"
           disabled={isReadOnly}
         />
       </td>
 
       {STAT_CONFIGS.map((config) => (
-        <td key={config.key} className="p-0.5 min-w-[75px]">
+        <td key={config.key} className="p-1 min-w-[80px] md:min-w-[110px]">
           <CompactStatControl
             label={config.label}
             value={player.stats[config.key]}
@@ -155,8 +155,8 @@ export const PlayerRow: React.FC<PlayerRowProps> = memo(({
         </td>
       ))}
 
-      <td className="p-0.5 min-w-[70px] bg-gray-50/20 dark:bg-midnight-900">
-         <div className={`flex items-center justify-center h-7 w-full rounded font-jersey text-lg shadow-inner ${impactColor}`}>
+      <td className="p-1 min-w-[80px] md:min-w-[90px] bg-gray-50/20 dark:bg-midnight-900">
+         <div className={`flex items-center justify-center h-8 md:h-10 w-full rounded md:rounded-lg font-jersey text-2xl md:text-3xl shadow-inner ${impactColor} pt-1`}>
             {impactScore}
          </div>
       </td>

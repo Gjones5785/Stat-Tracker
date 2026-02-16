@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, PlayerStats } from '../types';
 
@@ -57,7 +56,7 @@ export const SocialShareCard: React.FC<SocialShareCardProps> = ({
            {/* Stats */}
            <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
               <div>
-                 <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Possession</span>
+                 <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Completion Rate</span>
                  <span className="text-2xl font-bold">{possession}%</span>
               </div>
               <div className="text-right">
