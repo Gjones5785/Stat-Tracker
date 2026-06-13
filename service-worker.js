@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'rl-tracker-v3';
+const CACHE_NAME = 'rl-tracker-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -18,14 +18,28 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// Network-First strategy ensures users always get the freshest version when online
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests for our strategy
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
+    fetch(event.request)
+      .then((networkResponse) => {
+        // If we get a valid response, cache it for offline fallback
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return fetch(event.request);
+        return networkResponse;
+      })
+      .catch(() => {
+        // Offline fallback
+        return caches.match(event.request);
       })
   );
 });
@@ -43,5 +57,5 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim(); // Immediately control any open clients
+  self.clients.claim();
 });

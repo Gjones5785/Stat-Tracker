@@ -95,7 +95,7 @@ export interface MatchHistoryItem {
 
 // --- LEAGUE HUB TYPES ---
 
-export type DrillCategory = 'Attack' | 'Defense' | 'Fitness' | 'Core Skills' | 'Kicking';
+export type DrillCategory = 'Attack' | 'Defence' | 'Fitness' | 'Core Skills' | 'Kicking';
 export type DrillDifficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
 export interface Drill {

@@ -324,51 +324,61 @@ const MatchTracker: React.FC<MatchTrackerProps> = ({
     <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-midnight-950 font-sans transition-colors duration-300 overflow-hidden">
        {/* HEADER: Compacted to save vertical space */}
        <header className="shrink-0 bg-white dark:bg-midnight-800 border-b border-gray-200 dark:border-midnight-700 shadow-sm z-40 py-2">
-          <div className="w-full max-w-[1920px] mx-auto px-4 flex items-center justify-between gap-4 h-full">
+          <div className="w-full max-w-[1920px] mx-auto px-4 flex items-center justify-between gap-2 lg:gap-4 h-full">
              
              {/* LEFT SECTION */}
-             <div className="flex items-center gap-3 shrink-0">
+             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                  <button onClick={onExit} className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-midnight-700 text-gray-400 hover:text-gray-600 transition-colors border border-gray-100 dark:border-midnight-600">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
                  </button>
                  <button 
                    onClick={() => setIsRunning(!isRunning)}
-                   className={`px-4 py-1.5 rounded-lg border-2 transition-all active:scale-95 flex items-center gap-3 ${isRunning ? 'bg-white text-red-500 border-red-500' : 'bg-green-500 text-white border-green-600'} shadow-sm`}
+                   className={`px-3 lg:px-4 py-1.5 rounded-lg border-2 transition-all active:scale-95 flex items-center gap-2 lg:gap-3 ${isRunning ? 'bg-white text-red-500 border-red-500' : 'bg-green-500 text-white border-green-600'} shadow-sm`}
                  >
-                    <span className="text-3xl font-jersey font-medium tracking-wider leading-none pt-1">{formattedTime}</span>
+                    <span className="text-2xl lg:text-3xl font-jersey font-medium tracking-wider leading-none pt-1">{formattedTime}</span>
                     <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-white'}`}></div>
                  </button>
              </div>
 
              {/* CENTER SECTION: Scoreboard */}
-             <div className="flex-1 flex items-center justify-center gap-4 px-1 overflow-hidden">
-                <div className="flex items-center gap-4 min-w-0">
-                    <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="hidden md:block bg-transparent text-right font-heading font-black text-2xl text-slate-800 dark:text-white w-48 focus:outline-none truncate placeholder-gray-300" placeholder="HOME" />
-                    <span className="text-5xl font-jersey font-medium text-blue-600 dark:text-blue-400 tracking-tighter">{teamScore}</span>
+             <div className="flex-1 flex items-center justify-center gap-2 lg:gap-6 px-1 min-w-0">
+                <div className="flex items-center gap-2 lg:gap-4 min-w-0">
+                    <input 
+                      value={teamName} 
+                      onChange={(e) => setTeamName(e.target.value)} 
+                      className="hidden md:block bg-transparent text-right font-heading font-black text-lg lg:text-2xl text-slate-800 dark:text-white w-24 lg:w-48 focus:outline-none truncate placeholder-gray-300" 
+                      placeholder="HOME" 
+                    />
+                    <span className="text-3xl lg:text-5xl font-jersey font-medium text-blue-600 dark:text-blue-400 tracking-tighter shrink-0">{teamScore}</span>
                 </div>
-                <div className="text-gray-300 font-light text-3xl opacity-50 italic">/</div>
-                <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex items-center">
-                      <span className="text-5xl font-jersey font-medium text-red-500 dark:text-red-400 tracking-tighter">{opponentScore}</span>
-                      <div className="flex flex-col ml-2 space-y-0.5">
-                         <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-8 h-5 bg-gray-100 dark:bg-white/10 rounded text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+T</button>
-                         <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-8 h-5 bg-gray-100 dark:bg-white/10 rounded text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+K</button>
+                <div className="text-gray-300 font-light text-2xl lg:text-3xl opacity-50 italic shrink-0">/</div>
+                <div className="flex items-center gap-2 lg:gap-4 min-w-0">
+                    <div className="flex items-center shrink-0">
+                      <span className="text-3xl lg:text-5xl font-jersey font-medium text-red-500 dark:text-red-400 tracking-tighter">{opponentScore}</span>
+                      <div className="flex flex-col ml-1.5 lg:ml-2 space-y-0.5">
+                         <button onClick={() => setOpponentScore(opponentScore + 4)} className="w-7 lg:w-8 h-4 lg:h-5 bg-gray-100 dark:bg-white/10 rounded text-[8px] lg:text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+T</button>
+                         <button onClick={() => setOpponentScore(opponentScore + 2)} className="w-7 lg:w-8 h-4 lg:h-5 bg-gray-100 dark:bg-white/10 rounded text-[8px] lg:text-[9px] font-black text-slate-600 dark:text-slate-400 hover:bg-gray-200">+K</button>
                       </div>
                     </div>
-                    <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} className="hidden md:block bg-transparent text-left font-heading font-black text-2xl text-slate-800 dark:text-white w-48 focus:outline-none truncate placeholder-gray-300" placeholder="AWAY" />
+                    <input 
+                      value={opponentName} 
+                      onChange={(e) => setOpponentName(e.target.value)} 
+                      className="hidden md:block bg-transparent text-left font-heading font-black text-lg lg:text-2xl text-slate-800 dark:text-white w-24 lg:w-48 focus:outline-none truncate placeholder-gray-300" 
+                      placeholder="AWAY" 
+                    />
                 </div>
 
-                <div className="w-px h-10 bg-gray-200 dark:bg-white/10 hidden md:block mx-4"></div>
-                <div className={`hidden md:flex items-center gap-4 bg-gray-50 dark:bg-white/5 px-5 py-2 rounded-xl border border-gray-100 dark:border-white/10 ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
-                   <button onClick={handleSetComplete} className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95 hover:bg-green-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg></button>
-                   <div className="font-jersey text-2xl tracking-[0.1em] text-slate-900 dark:text-white pt-1">{completedSets}/{totalSets} <span className="ml-1 text-[10px] opacity-70 font-sans font-black uppercase text-gray-400">Sets</span></div>
-                   <button onClick={handleSetIncomplete} className="w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95 hover:bg-red-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <div className="w-px h-8 lg:h-10 bg-gray-200 dark:bg-white/10 hidden lg:block mx-2"></div>
+                <div className={`hidden md:flex items-center gap-2 lg:gap-4 bg-gray-50 dark:bg-white/5 px-3 lg:px-5 py-1.5 lg:py-2 rounded-xl border border-gray-100 dark:border-white/10 shrink-0 ${!isRunning ? 'opacity-30 pointer-events-none' : ''}`}>
+                   <button onClick={handleSetComplete} className="w-6 lg:w-7 h-6 lg:h-7 rounded-full bg-green-500 text-white flex items-center justify-center active:scale-95 hover:bg-green-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg></button>
+                   <div className="font-jersey text-xl lg:text-2xl tracking-[0.1em] text-slate-900 dark:text-white pt-1">{completedSets}/{totalSets} <span className="ml-0.5 lg:ml-1 text-[8px] lg:text-[10px] opacity-70 font-sans font-black uppercase text-gray-400">Sets</span></div>
+                   <button onClick={handleSetIncomplete} className="w-6 lg:w-7 h-6 lg:h-7 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-95 hover:bg-red-600 shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
              </div>
 
              {/* RIGHT SECTION */}
-             <div className="flex items-center gap-3 shrink-0">
-                <Button onClick={handlePeriodEnd} variant="secondary" className="px-5 py-2.5 h-auto text-xs font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 rounded-lg shadow-none whitespace-nowrap hover:bg-red-100 transition-colors">
+             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                <Button onClick={handlePeriodEnd} variant="secondary" className="px-3 lg:px-5 py-2 lg:py-2.5 h-auto text-[10px] lg:text-xs font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 rounded-lg shadow-none whitespace-nowrap hover:bg-red-100 transition-colors">
                    {period === '1st' ? 'End 1st Half' : 'End Match'}
                 </Button>
              </div>
@@ -613,7 +623,21 @@ export const App: React.FC = () => {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '224, 32, 32';
       };
+      
+      const darkenColor = (hex: string, percent: number) => {
+        const num = parseInt(hex.replace("#",""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        
+        const limit = (val: number) => Math.max(0, Math.min(255, val));
+        return "#" + (0x1000000 + limit(R)*0x10000 + limit(G)*0x100 + limit(B)).toString(16).slice(1);
+      };
+
       document.documentElement.style.setProperty('--brand-primary-rgb', hexToRgb(settings.primaryColor));
+      document.documentElement.style.setProperty('--brand-primary-dark', darkenColor(settings.primaryColor, -15));
+      document.documentElement.style.setProperty('--brand-primary-darker', darkenColor(settings.primaryColor, -30));
       
       localStorage.setItem('LEAGUELENS_SETTINGS', JSON.stringify(settings));
       localStorage.setItem('RUGBY_TRACKER_CLUB_NAME', settings.clubName);
@@ -631,22 +655,22 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const unsubSquad = onSnapshot(query(collection(db, `users/${user.uid}/squad`), orderBy('name')), (snap) => {
-      setSquad(snap.docs.map(d => ({ id: d.id, ...d.data() } as SquadPlayer)));
+      setSquad(snap.docs.map(d => ({ ...d.data(), id: d.id } as SquadPlayer)));
     });
     const unsubMatches = onSnapshot(query(collection(db, `users/${user.uid}/matches`), orderBy('date', 'desc')), (snap) => {
-      setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as MatchHistoryItem)));
+      setHistory(snap.docs.map(d => ({ ...d.data(), id: d.id } as MatchHistoryItem)));
     });
     const unsubTraining = onSnapshot(query(collection(db, `users/${user.uid}/training`), orderBy('date', 'desc')), (snap) => {
-      setTrainingHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingSession)));
+      setTrainingHistory(snap.docs.map(d => ({ ...d.data(), id: d.id } as TrainingSession)));
     });
     const unsubPlaybook = onSnapshot(query(collection(db, `users/${user.uid}/playbook`), orderBy('createdAt', 'desc')), (snap) => {
-        setPlaybook(snap.docs.map(d => ({ id: d.id, ...d.data() } as PlaybookItem)));
+        setPlaybook(snap.docs.map(d => ({ ...d.data(), id: d.id } as PlaybookItem)));
     });
     const unsubActions = onSnapshot(query(collection(db, `users/${user.uid}/actions`), orderBy('createdAt', 'desc')), (snap) => {
-        setActions(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActionItem)));
+        setActions(snap.docs.map(d => ({ ...d.data(), id: d.id } as ActionItem)));
     });
     const unsubCoaches = onSnapshot(query(collection(db, `users/${user.uid}/coaches`), orderBy('name')), (snap) => {
-        setCoaches(snap.docs.map(d => ({ id: d.id, ...d.data() } as Coach)));
+        setCoaches(snap.docs.map(d => ({ ...d.data(), id: d.id } as Coach)));
     });
     return () => { unsubSquad(); unsubMatches(); unsubTraining(); unsubPlaybook(); unsubActions(); unsubCoaches(); };
   }, [user]);
@@ -679,7 +703,31 @@ export const App: React.FC = () => {
   const handleDeleteTraining = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/training`, id)); };
   const handleAddPlaybookItem = async (item: any) => { if(!user) return; await addDoc(collection(db, `users/${user.uid}/playbook`), item); };
   const handleDeletePlaybookItem = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/playbook`, id)); };
-  const handleDeleteMatch = async (id: string) => { if(!user) return; await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); };
+  const handleDeleteMatch = async (id: string) => { 
+    if (!user) return; 
+    try {
+      // Optimistically remove the match from local state to guarantee an instant UI update
+      setHistory(prev => prev.filter(m => m.id !== id));
+      
+      // Perform deletion in Firestore
+      await deleteDoc(doc(db, `users/${user.uid}/matches`, id)); 
+    } catch (e) {
+      console.error("Failed to delete match from Firestore:", e);
+      throw e;
+    }
+  };
+
+  const handleUpdateMatch = async (id: string, updates: Partial<MatchHistoryItem>) => {
+    if (!user) return;
+    try {
+      // Optimistically update the match in local state
+      setHistory(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+      // Perform update in Firestore
+      await updateDoc(doc(db, `users/${user.uid}/matches`, id), stripUndefined(updates));
+    } catch (e) {
+      console.error("Failed to update match in Firestore:", e);
+    }
+  };
 
   // Coach Drawer Handlers
   const handleAddAction = async (content: string, category: ActionCategory) => {
@@ -739,8 +787,30 @@ export const App: React.FC = () => {
     setHasViewedActions(true);
   };
 
-  const updateClubName = (name: string) => {
+  const updateClubName = async (name: string) => {
      setSettings(prev => ({ ...prev, clubName: name }));
+     if (user) {
+       try {
+         await setDoc(doc(db, 'users', user.uid), { clubName: name }, { merge: true });
+       } catch (err) {
+         console.error("Failed to sync club name to Firestore:", err);
+       }
+     }
+  };
+
+  const handleUpdateLogoAndBrandColor = async (newLogo: string | null, newColor: string) => {
+     setSettings(prev => ({
+       ...prev,
+       logo: newLogo,
+       primaryColor: newColor
+     }));
+     if (user) {
+       try {
+         await setDoc(doc(db, 'users', user.uid), { logo: newLogo, brandColor: newColor }, { merge: true });
+       } catch (err) {
+         console.error("Failed to sync logo & brand color to Firestore:", err);
+       }
+     }
   };
 
   const pendingActionsCount = actions.filter(a => !a.isCompleted).length;
@@ -840,6 +910,8 @@ export const App: React.FC = () => {
         logo={settings.logo}
         darkMode={settings.darkMode}
         toggleTheme={() => setSettings(prev => ({...prev, darkMode: !prev.darkMode}))}
+        onUpdateMatch={handleUpdateMatch}
+        onUpdateLogo={handleUpdateLogoAndBrandColor}
       />
       {editingVoteMatch && (
         <VotingModal 
